@@ -1,0 +1,179 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Poppins", "Noto Sans Devanagari", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Noto Sans Devanagari", "Poppins", ui-sans-serif, system-ui, sans-serif;
+
+  --color-accent: #c9662b;      /* rust / terracotta — construction-site rust */
+  --color-accent-dim: #8a4620;
+  --color-gold: #e7b45c;        /* bhakti / bhojpuri gold */
+  --color-gold-dim: #9c7a3c;
+  --color-brick: #7a3324;
+  --color-ink: #120b08;
+
+  --shadow-glass: 0 16px 48px -12px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.2);
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  height: 100%;
+  background: var(--color-ink);
+  color: white;
+  font-family: var(--font-body);
+}
+
+/* ---------- Hero background (per-tab, swapped via CSS var) ---------- */
+.hero-bg {
+  position: fixed;
+  inset: 0;
+  background-image: var(--bg-url, url("/bg/scene-wide.png"));
+  background-size: cover;
+  background-position: center;
+  filter: var(--bg-tint, none);
+  transition: background-image 700ms ease, filter 700ms ease;
+}
+
+@media (orientation: portrait) {
+  .hero-bg {
+    background-image: var(--bg-url-tall, var(--bg-url, url("/bg/scene-tall.png")));
+  }
+}
+
+.hero-overlay {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.35), transparent, rgba(0,0,0,0.8));
+}
+
+/* ---------- Grain ---------- */
+.grain-overlay {
+  position: fixed;
+  inset: 0;
+  mix-blend-mode: overlay;
+  opacity: 0.3;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ---------- Glass recipe ---------- */
+.glass {
+  border: 1px solid rgba(255,255,255,0.1);
+  background-image: linear-gradient(to bottom, rgba(255,255,255,0.15), rgba(255,255,255,0.055));
+  backdrop-filter: blur(38px) saturate(1.7);
+  -webkit-backdrop-filter: blur(38px) saturate(1.7);
+  box-shadow: var(--shadow-glass);
+}
+
+/* ---------- Clock blink ---------- */
+@keyframes blink {
+  50% { opacity: 0; }
+}
+.blink {
+  animation: blink 1s step-start infinite;
+}
+
+/* ---------- Vinyl / video spin ---------- */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.vinyl-spin {
+  animation: spin 8s linear infinite;
+  animation-play-state: paused;
+}
+.vinyl-spin[data-playing="true"] {
+  animation-play-state: running;
+}
+
+/* ---------- Marquee for long titles ---------- */
+@keyframes marquee {
+  0%, 15% { transform: translateX(0); }
+  85%, 100% { transform: translateX(var(--marquee-shift, 0px)); }
+}
+.marquee-track {
+  animation: marquee 8s ease-in-out infinite;
+}
+
+/* ---------- Gold Devanagari tab labels (bhakti / bhojpuri) ---------- */
+.gold-text {
+  background: linear-gradient(180deg, #fbe3a8 0%, #e7b45c 45%, #a97727 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.25);
+  font-weight: 700;
+}
+
+/* ---------- Tab pill ---------- */
+.tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 9999px;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.8rem;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.75);
+  transition: transform 220ms ease, background 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
+  white-space: nowrap;
+}
+.tab-btn:active { transform: scale(0.96); }
+.tab-btn.active {
+  background: rgba(255,255,255,0.16);
+  border-color: rgba(255,255,255,0.28);
+  color: white;
+  box-shadow: 0 8px 20px -8px rgba(0,0,0,0.6);
+}
+.tab-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.1);
+  font-size: 0.75rem;
+}
+.tab-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ---------- Safe-area corners ---------- */
+.safe-t { top: max(1rem, env(safe-area-inset-top)); }
+.safe-b { bottom: max(1rem, env(safe-area-inset-bottom)); }
+.safe-l { left: max(1rem, env(safe-area-inset-left)); }
+.safe-r { right: max(1rem, env(safe-area-inset-right)); }
+
+/* ---------- Seek bar ---------- */
+.seek-hit {
+  touch-action: none;
+}
+.seek-rail {
+  background: rgba(255,255,255,0.15);
+}
+.seek-fill {
+  background: linear-gradient(90deg, var(--color-accent), var(--color-gold));
+  box-shadow: 0 0 10px 1px color-mix(in srgb, var(--color-accent) 60%, transparent);
+}
+.seek-knob {
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+.seek-hit:hover .seek-knob,
+.seek-hit:active .seek-knob {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vinyl-spin, .marquee-track, .blink {
+    animation: none !important;
+  }
+}
+
