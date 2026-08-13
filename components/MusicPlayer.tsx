@@ -7,12 +7,12 @@ import { track as vercelTrack } from "@vercel/analytics";
 
 type Track = {
   id: string;
-  title: string;
-  artist: string;
-  film: string;
-  year: number;
-  duration: number;
-  videoId: string;
+  videoId?: string;
+  title?: string;
+  artist?: string;
+  film?: string;
+  year?: number;
+  duration?: number;
 };
 
 type Playlist = { id: string; name: string; tracks: Track[] };
@@ -38,7 +38,7 @@ declare global {
 
 /* ============================ Constants ============================ */
 
-const TAB_META: Record<TabId, { label: string; devLabel: string; gold: boolean; thumb?: string }> = {
+const TAB_META: Record<TabId, { label: string; devLabel: string; gold: boolean }> = {
   playlists: { label: "Playlists", devLabel: "पुरानी यादें", gold: false },
   singles: { label: "Single Songs", devLabel: "पुरानी यादें", gold: false },
   bhakti: { label: "Bhakti Song", devLabel: "भक्ति गीत", gold: true },
@@ -86,10 +86,7 @@ function loadYouTubeAPI(): Promise<any> {
   });
 }
 
-/* ======================= Module-scope subcomponents ======================= */
-/* Defined here (not inside MusicPlayer) so they keep a stable identity across
-   re-renders — otherwise React remounts them every render and the vinyl spin
-   / marquee animations restart from frame 0 on every progress tick. */
+/* ======================= Subcomponents ======================= */
 
 function ClockDisplay() {
   const [time, setTime] = useState("");
@@ -165,8 +162,7 @@ function TabsRow({
                   src={data.tabBackgrounds[tabId]?.url}
                   alt={meta.label}
                   onError={(e) => {
-                    const el = e.currentTarget;
-                    el.remove();
+                    e.currentTarget.remove();
                   }}
                 />
               </span>
@@ -338,12 +334,10 @@ function QueueDrawer({
                   {i === currentIndex ? "♪" : i + 1}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium text-white">{t.title}</span>
-                  <span className="block truncate text-xs text-white/60">
-                    {t.artist} · {t.film} · {t.year}
-                  </span>
+                  <span className="block truncate text-sm font-medium text-white">{t.title || `Track ${i + 1}`}</span>
+                  <span className="block truncate text-xs text-white/60">{t.artist || "YouTube Audio"}</span>
                 </span>
-                <span className="shrink-0 text-xs tabular-nums text-white/50">{formatTime(t.duration)}</span>
+                <span className="shrink-0 text-xs tabular-nums text-white/50">{formatTime(t.duration || 0)}</span>
               </button>
             </li>
           ))}
@@ -382,6 +376,9 @@ export default function MusicPlayer({ data }: { data: TracksData }) {
   const [isDesktop, setIsDesktop] = useState(false);
   const [playerReady, setPlayerReady] = useState(false);
 
+  const [ytTitle, setYtTitle] = useState("");
+  const [ytArtist, setYtArtist] = useState("");
+
   const ytPlayerRef = useRef<any>(null);
   const progressTimerRef = useRef<number | null>(null);
 
@@ -389,7 +386,14 @@ export default function MusicPlayer({ data }: { data: TracksData }) {
   const currentTrack = queue[trackIndex] ?? queue[0];
   const bg = data.tabBackgrounds[activeTab];
 
-  /* ---- viewport breakpoint tracking (drives which mount holds the iframe) ---- */
+  const updateVideoMeta = (playerInstance: any) => {
+    if (playerInstance && typeof playerInstance.getVideoData === "function") {
+      const info = playerInstance.getVideoData();
+      if (info?.title) setYtTitle(info.title);
+      if (info?.author) setYtArtist(info.author);
+    }
+  };
+
   useEffect(() => {
     const mql = window.matchMedia("(min-width: 640px)");
     const update = () => setIsDesktop(mql.matches);
@@ -398,7 +402,6 @@ export default function MusicPlayer({ data }: { data: TracksData }) {
     return () => mql.removeEventListener("change", update);
   }, []);
 
-  /* ---- progress polling while playing ---- */
   useEffect(() => {
     if (progressTimerRef.current) window.clearInterval(progressTimerRef.current);
     if (isPlaying) {
@@ -426,7 +429,6 @@ export default function MusicPlayer({ data }: { data: TracksData }) {
     [queue.length]
   );
 
-  /* ---- create / recreate the YT player in the currently visible mount ---- */
   useEffect(() => {
     let cancelled = false;
     const mountId = isDesktop ? DESKTOP_MOUNT_ID : MOBILE_MOUNT_ID;
@@ -445,7 +447,7 @@ export default function MusicPlayer({ data }: { data: TracksData }) {
       }
 
       ytPlayerRef.current = new YT.Player(mountId, {
-        videoId: currentTrack?.videoId,
+        videoId: currentTrack?.videoId || currentTrack?.id,
         playerVars: {
           playsinline: 1,
           rel: 0,
@@ -455,6 +457,7 @@ export default function MusicPlayer({ data }: { data: TracksData }) {
           onReady: (e: any) => {
             setPlayerReady(true);
             setDuration(e.target.getDuration() || currentTrack?.duration || 0);
+            updateVideoMeta(e.target);
             if (savedTime > 0) e.target.seekTo(savedTime, true);
             if (wasPlaying) e.target.playVideo();
           },
@@ -463,6 +466,7 @@ export default function MusicPlayer({ data }: { data: TracksData }) {
             if (e.data === YTState.PLAYING) {
               setIsPlaying(true);
               setDuration(e.target.getDuration());
+              updateVideoMeta(e.target);
             } else if (e.data === YTState.PAUSED) {
               setIsPlaying(false);
             } else if (e.data === YTState.ENDED) {
@@ -471,32 +475,31 @@ export default function MusicPlayer({ data }: { data: TracksData }) {
             }
           },
           onError: (e: any) => {
-            handleErrorSkip(e.data, currentTrack?.videoId ?? "");
+            handleErrorSkip(e.data, currentTrack?.videoId || currentTrack?.id || "");
           },
         },
       });
-      void mountEl;
     });
 
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDesktop]);
 
-  /* ---- load a new video when track/tab/playlist changes ---- */
   useEffect(() => {
     const p = ytPlayerRef.current;
-    if (!p || !playerReady || !currentTrack) return;
+    const vidId = currentTrack?.videoId || currentTrack?.id;
+    if (!p || !playerReady || !vidId) return;
     setCurrentTime(0);
-    setDuration(currentTrack.duration || 0);
+    setDuration(currentTrack?.duration || 0);
+    setYtTitle("");
+    setYtArtist("");
     if (isPlaying) {
-      p.loadVideoById(currentTrack.videoId);
+      p.loadVideoById(vidId);
     } else {
-      p.cueVideoById(currentTrack.videoId);
+      p.cueVideoById(vidId);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentTrack?.id]);
+  }, [currentTrack?.id, currentTrack?.videoId]);
 
   const togglePlay = () => {
     const p = ytPlayerRef.current;
@@ -533,9 +536,11 @@ export default function MusicPlayer({ data }: { data: TracksData }) {
   const heading = TAB_META[activeTab].devLabel;
   const headingGold = TAB_META[activeTab].gold;
 
+  const displayTitle = ytTitle || currentTrack?.title || "Loading...";
+  const displayArtist = ytArtist || currentTrack?.artist || "YouTube";
+
   return (
     <>
-      {/* Background */}
       <div
         className="hero-bg"
         style={
@@ -548,7 +553,6 @@ export default function MusicPlayer({ data }: { data: TracksData }) {
       <div className="hero-overlay -z-20" />
       <div className="grain-overlay -z-10" />
 
-      {/* Top row */}
       <div className="safe-t safe-l fixed z-30">
         <ClockDisplay />
       </div>
@@ -556,7 +560,6 @@ export default function MusicPlayer({ data }: { data: TracksData }) {
         <CreditLink />
       </div>
 
-      {/* Hero: heading + tabs */}
       <section className="hero relative z-20 mt-24 flex w-full flex-col items-center gap-4 px-4 text-center sm:mt-20">
         <h1
           id="heroTitle"
@@ -586,7 +589,6 @@ export default function MusicPlayer({ data }: { data: TracksData }) {
         ) : null}
       </section>
 
-      {/* Spacer */}
       <div className="flex-1" />
 
       {/* ===================== DESKTOP PLAYER ===================== */}
@@ -603,10 +605,10 @@ export default function MusicPlayer({ data }: { data: TracksData }) {
 
           <div className="min-w-0 flex-1">
             <div className="flex items-baseline justify-between gap-2">
-              <p className="truncate text-[15px] font-semibold text-white">{currentTrack?.title ?? "—"}</p>
+              <p className="truncate text-[15px] font-semibold text-white">{displayTitle}</p>
               <QueueButton count={queue.length} onClick={() => setQueueOpen(true)} />
             </div>
-            <p className="truncate text-[12.5px] text-white/70">{currentTrack?.artist ?? ""}</p>
+            <p className="truncate text-[12.5px] text-white/70">{displayArtist}</p>
             <div className="mt-1.5 flex items-center gap-2">
               <SeekBar currentTime={currentTime} duration={duration} onSeek={handleSeek} />
             </div>
@@ -634,10 +636,10 @@ export default function MusicPlayer({ data }: { data: TracksData }) {
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between gap-2">
-                <p className="truncate text-[15px] font-semibold text-white">{currentTrack?.title ?? "—"}</p>
+                <p className="truncate text-[15px] font-semibold text-white">{displayTitle}</p>
                 <QueueButton count={queue.length} onClick={() => setQueueOpen(true)} />
               </div>
-              <p className="truncate text-[12.5px] text-white/70">{currentTrack?.artist ?? ""}</p>
+              <p className="truncate text-[12.5px] text-white/70">{displayArtist}</p>
             </div>
           </div>
 
