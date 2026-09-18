@@ -1372,6 +1372,93 @@ h1, h2, h3, h4 {
   42%           { transform: scale(1.14); }
 }
 
+/* ---------- Warm surface: keeps overlays in the site's amber family ----------
+   Plain `.glass` uses a neutral white gradient plus saturate(), which over the
+   warm ink background reads as cold blue/purple. Anything that floats above the
+   page (toasts, queue sheet) uses this warm tint instead so the palette stays
+   consistent. */
+.surface-warm {
+  border: 1px solid rgba(232, 163, 61, 0.16);
+  background-image:
+    linear-gradient(to bottom, rgba(42, 27, 18, 0.93), rgba(24, 15, 12, 0.95)),
+    linear-gradient(to bottom, rgba(232, 163, 61, 0.10), rgba(232, 163, 61, 0.03));
+  backdrop-filter: blur(26px) saturate(1.1);
+  -webkit-backdrop-filter: blur(26px) saturate(1.1);
+  box-shadow:
+    0 18px 46px -20px rgba(0, 0, 0, 0.95),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* Copy-to-clipboard success animation. */
+.sp-copy {
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.3s, color 0.3s;
+}
+.sp-copy.is-copied {
+  border-color: rgba(79, 179, 165, 0.6) !important;
+  color: var(--color-teal) !important;
+}
+.sp-copy.is-copied::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 20%, rgba(79,179,165,0.22) 50%, transparent 80%);
+  animation: sp-sweep 0.75s ease-out 1;
+  pointer-events: none;
+}
+
+@keyframes sp-sweep {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(100%); }
+}
+
+.sp-copy-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  animation: sp-label-in 0.34s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+@keyframes sp-label-in {
+  from { opacity: 0; transform: translateY(0.55em) scale(0.96); }
+  to   { opacity: 1; transform: none; }
+}
+
+.sp-check-draw {
+  stroke-dasharray: 22;
+  stroke-dashoffset: 22;
+  animation: sp-draw 0.42s ease-out 0.06s forwards;
+}
+
+@keyframes sp-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+/* Segmented Pay / QR switch shown on mobile. */
+.sp-seg {
+  display: inline-flex;
+  width: 100%;
+  padding: 0.22rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(0, 0, 0, 0.30);
+}
+.sp-seg-btn {
+  flex: 1 1 0;
+  border-radius: 999px;
+  padding: 0.44rem 0.85rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.55);
+  transition: color 0.25s, background 0.25s, box-shadow 0.25s;
+}
+.sp-seg-btn[aria-pressed="true"] {
+  color: #1a1207;
+  background: linear-gradient(180deg, var(--color-gold), var(--color-amber));
+  box-shadow: 0 6px 18px -8px rgba(232, 163, 61, 0.8);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -1416,4 +1503,7 @@ h1, h2, h3, h4 {
   .sp-chip svg { flex: 0 0 auto; overflow: visible; }
 .sp-chip:hover { transform: none; }
   .sp-pill[aria-pressed="true"] { transform: none; }
+  .sp-copy.is-copied::after { animation: none !important; opacity: 0; }
+  .sp-copy-label { animation: none !important; }
+  .sp-check-draw { animation: none !important; stroke-dashoffset: 0; }
 }

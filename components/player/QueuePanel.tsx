@@ -182,7 +182,7 @@ export default function QueuePanel() {
         role="dialog"
         aria-modal="true"
         aria-label="Playback queue"
-        className="glass sheet-up absolute inset-x-0 bottom-0 flex max-h-[84dvh] flex-col rounded-t-3xl sm:slide-in-right sm:inset-y-0 sm:left-auto sm:right-0 sm:max-h-none sm:w-[400px] sm:rounded-none sm:rounded-l-3xl"
+        className="surface-warm sheet-up absolute inset-x-0 bottom-0 flex max-h-[84dvh] flex-col rounded-t-3xl sm:slide-in-right sm:inset-y-0 sm:left-auto sm:right-0 sm:max-h-none sm:w-[400px] sm:rounded-none sm:rounded-l-3xl"
       >
         {/* Mobile grab handle */}
         <div className="flex justify-center pt-2.5 sm:hidden" aria-hidden>

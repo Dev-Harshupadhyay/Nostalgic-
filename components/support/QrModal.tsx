@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { SUPPORT, DEV, buildUpiLink } from "@/lib/site";
-import { Close, Check } from "@/components/ui/Icons";
+import { Close } from "@/components/ui/Icons";
 import { UpiMark, GPayMark, PhonePeMark, PaytmMark } from "@/components/support/UpiMarks";
 
 type Props = {
@@ -148,7 +148,7 @@ export default function QrModal({
 
       <div
         ref={panelRef}
-        className="glass fade-up relative w-full max-w-[420px] overflow-hidden rounded-[28px] px-6 py-7 text-center"
+        className="surface-warm fade-up relative w-full max-w-[420px] overflow-hidden rounded-[28px] px-6 py-7 text-center"
       >
         <div aria-hidden className="sp-aurora" />
 
@@ -262,15 +262,33 @@ export default function QrModal({
           <button
             type="button"
             onClick={copyUpi}
-            className="btn btn-ghost mt-4 w-full justify-center px-5 py-2.5 text-sm"
+            className={`btn btn-ghost sp-copy mt-4 w-full justify-center px-5 py-2.5 text-sm ${
+              copied ? "is-copied" : ""
+            }`}
             aria-label={`Copy UPI ID ${SUPPORT.upiId}`}
           >
             {copied ? (
-              <>
-                <Check size={15} /> Copied
-              </>
+              <span className="sp-copy-label" key="done">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden className="shrink-0">
+                  <path
+                    d="M4 12.5l5 5L20 6.5"
+                    stroke="currentColor"
+                    strokeWidth="2.4"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="sp-check-draw"
+                  />
+                </svg>
+                UPI ID copied!
+              </span>
             ) : (
-              `Copy UPI ID instead`
+              <span className="sp-copy-label" key="idle">
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" aria-hidden className="shrink-0 opacity-70">
+                  <rect x="9" y="9" width="11" height="11" rx="2.5" stroke="currentColor" strokeWidth="1.9" />
+                  <path d="M5 15V5.5A1.5 1.5 0 0 1 6.5 4H15" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+                </svg>
+                Copy UPI ID instead
+              </span>
             )}
           </button>
 

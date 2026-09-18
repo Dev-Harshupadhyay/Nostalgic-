@@ -67,7 +67,7 @@ export default function WelcomeToast() {
         <div
           key={t.id}
           role="status"
-          className={`glass pointer-events-auto max-w-[min(92vw,360px)] rounded-2xl px-4 py-3 shadow-[0_18px_46px_-20px_rgba(0,0,0,0.95)] ${
+          className={`surface-warm pointer-events-auto max-w-[min(92vw,360px)] rounded-2xl px-4 py-3 ${
             t.leaving ? "toast-out" : "toast-in"
           }`}
         >
