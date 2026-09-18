@@ -2,9 +2,10 @@
 
 import { usePlayer } from "./PlayerProvider";
 import ProgressBar from "./ProgressBar";
-import VinylArtwork from "./VinylArtwork";
+import ArtworkCard from "./ArtworkCard";
+import Marquee from "./Marquee";
 import IconButton from "@/components/ui/IconButton";
-import { shortTitle, formatTime } from "@/lib/format";
+import { cleanTitle, formatTime } from "@/lib/format";
 import {
   Play,
   Pause,
@@ -15,7 +16,6 @@ import {
   Volume,
   VolumeMute,
   Spinner,
-  ChevronDown,
 } from "@/components/ui/Icons";
 
 export default function MiniPlayer() {
@@ -47,6 +47,7 @@ export default function MiniPlayer() {
 
   const fav = isFavourite(current);
   const loading = status === "loading" || status === "buffering";
+  const pct = duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0;
 
   return (
     <div
@@ -54,27 +55,26 @@ export default function MiniPlayer() {
         fullPlayerOpen ? "translate-y-full" : "translate-y-0"
       }`}
     >
-      <div className="player-surface safe-b mx-auto max-w-[1400px] border-x-0 border-b-0 sm:mb-3 sm:rounded-2xl sm:border">
-        {/* Mobile: timeline across the top */}
-        <div className="px-3 pt-2 sm:hidden">
-          <ProgressBar
-            currentTime={currentTime}
-            duration={duration}
-            onSeek={seekTo}
-            size="sm"
-            showTimes={false}
-          />
+      <div className="pp-mini safe-b relative mx-auto max-w-[1400px] sm:mb-3">
+        {/* Hairline progress on mobile — the draggable bar lives on desktop. */}
+        <div className="pp-mini-progress md:hidden" aria-hidden>
+          <span style={{ width: `${pct}%` }} />
         </div>
 
-        <div className="flex items-center gap-2.5 px-3 py-2 sm:gap-3 sm:px-4 sm:py-3">
+        <div className="flex items-center gap-2.5 px-3 py-2.5 sm:gap-4 sm:px-4 sm:py-3">
           {/* Artwork + meta → opens the full player */}
           <button
             type="button"
             onClick={openFullPlayer}
-            className="flex min-w-0 flex-1 items-center gap-3 rounded-xl text-left"
-            aria-label={`Open full player for ${shortTitle(current.title, 40)}`}
+            className="flex min-w-0 flex-1 items-center gap-3 rounded-2xl text-left"
+            aria-label={`Open full player for ${cleanTitle(current.title)}`}
           >
-            <VinylArtwork song={current} playing={isPlaying} size="mini" />
+            <ArtworkCard
+              song={current}
+              playing={isPlaying}
+              className="h-12 w-12 shrink-0 sm:h-14 sm:w-14"
+              rounded="14px"
+            />
 
             <span className="min-w-0 flex-1">
               <span className="flex items-center gap-1.5">
@@ -86,11 +86,12 @@ export default function MiniPlayer() {
                     <span />
                   </span>
                 ) : null}
-                <span className="line-1 block text-[0.82rem] font-semibold text-white/92 sm:text-sm">
-                  {shortTitle(current.title, 48)}
-                </span>
+                <Marquee
+                  text={cleanTitle(current.title)}
+                  className="text-[0.84rem] font-semibold text-white/92 sm:text-sm"
+                />
               </span>
-              <span className="line-1 block text-[0.68rem] text-white/45 sm:text-xs">
+              <span className="line-1 mt-0.5 block text-[0.7rem] text-white/45 sm:text-xs">
                 {error ? (
                   <span className="text-[color:var(--color-rose)]">{error}</span>
                 ) : (
@@ -106,8 +107,8 @@ export default function MiniPlayer() {
             </span>
           </button>
 
-          {/* Desktop: inline timeline */}
-          <div className="hidden w-[34%] max-w-[420px] shrink-0 md:block">
+          {/* Desktop: full draggable timeline */}
+          <div className="hidden w-[32%] max-w-[420px] shrink-0 md:block">
             <ProgressBar
               currentTime={currentTime}
               duration={duration}
@@ -197,16 +198,6 @@ export default function MiniPlayer() {
               className="hidden sm:inline-flex"
             >
               <QueueIcon size={18} />
-            </IconButton>
-
-            <IconButton
-              label="Open full player"
-              tooltip="Expand"
-              onClick={openFullPlayer}
-              size="sm"
-              className="sm:hidden"
-            >
-              <ChevronDown size={18} className="rotate-180" />
             </IconButton>
           </div>
         </div>

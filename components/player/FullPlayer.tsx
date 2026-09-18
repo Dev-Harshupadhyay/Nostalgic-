@@ -5,6 +5,8 @@ import { usePlayer } from "./PlayerProvider";
 import PlayerControls from "./PlayerControls";
 import ProgressBar from "./ProgressBar";
 import VinylArtwork from "./VinylArtwork";
+import NowPlaying from "./NowPlaying";
+import Marquee from "./Marquee";
 import IconButton from "@/components/ui/IconButton";
 import { cleanTitle } from "@/lib/format";
 import {
@@ -146,10 +148,11 @@ export default function FullPlayer() {
         </IconButton>
 
         <div className="min-w-0 text-center">
-          <p className="eyebrow" aria-live="polite">
+          <p className="eyebrow">{current.category}</p>
+          {/* Single polite live region for playback status. */}
+          <p className="sr-only" aria-live="polite">
             {statusText}
           </p>
-          <p className="line-1 text-[0.72rem] text-white/45">{current.category}</p>
         </div>
 
         <IconButton
@@ -164,105 +167,115 @@ export default function FullPlayer() {
       </header>
 
       {/* Body */}
-      <div className="scroll-y flex flex-1 flex-col items-center justify-center gap-6 px-5 py-4 sm:gap-7 sm:px-8">
-        <VinylArtwork song={current} playing={isPlaying} loading={loading} size="full" />
-
-        {/* Metadata */}
-        <div className="w-full max-w-xl text-center">
-          <h1
-            key={current.youtubeId}
-            className="fade-up line-2 text-lg font-bold leading-snug text-white sm:text-2xl"
-          >
-            {cleanTitle(current.title)}
-          </h1>
-          <p className="mt-1.5 text-sm text-white/58 sm:text-base">{current.artist}</p>
-
-          <div className="mt-2.5 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[0.7rem] text-white/40">
-            <span className="rounded-full bg-white/7 px-2.5 py-0.5">• {current.category}</span>
-            {current.language ? (
-              <span className="rounded-full bg-white/7 px-2.5 py-0.5">{current.language}</span>
-            ) : null}
-            {current.year ? (
-              <span className="rounded-full bg-white/7 px-2.5 py-0.5">{current.year}</span>
-            ) : null}
-            <span className="rounded-full bg-white/7 px-2.5 py-0.5">YouTube</span>
+      <div className="scroll-y flex flex-1 flex-col items-center px-4 py-4 sm:px-8">
+        <div className="pp-card my-auto w-full max-w-[560px] shrink-0 px-5 py-6 sm:px-9 sm:py-8">
+          {/* Artwork — the spinning record stays: audio-only means no video surface. */}
+          <div className="flex justify-center">
+            <VinylArtwork song={current} playing={isPlaying} loading={loading} size="full" />
           </div>
 
-          {error ? (
-            <p role="alert" className="mt-3 text-xs text-[color:var(--color-rose)]">
-              {error}
-            </p>
-          ) : null}
-        </div>
+          {/* Metadata */}
+          <div key={current.youtubeId} className="fade-up mt-7 text-center">
+            <NowPlaying status={status} />
 
-        {/* Timeline */}
-        <div className="w-full max-w-xl">
-          <ProgressBar currentTime={currentTime} duration={duration} onSeek={seekTo} size="lg" />
-        </div>
+            <h1 className="mt-3 text-lg font-bold leading-snug text-white sm:text-2xl">
+              <Marquee text={cleanTitle(current.title)} className="mx-auto" />
+            </h1>
+            <p className="line-1 mt-1.5 text-sm text-white/58 sm:text-base">{current.artist}</p>
 
-        {/* Main transport */}
-        <PlayerControls size="lg" showExtras />
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[0.7rem] text-white/40">
+              <span className="rounded-full bg-white/7 px-2.5 py-0.5">• {current.category}</span>
+              {current.language ? (
+                <span className="rounded-full bg-white/7 px-2.5 py-0.5">{current.language}</span>
+              ) : null}
+              {current.year ? (
+                <span className="rounded-full bg-white/7 px-2.5 py-0.5">{current.year}</span>
+              ) : null}
+              <span className="rounded-full bg-white/7 px-2.5 py-0.5">YouTube</span>
+            </div>
 
-        {/* Secondary row */}
-        <div className="flex w-full max-w-xl flex-col items-center gap-4 sm:flex-row sm:justify-between">
-          <div className="flex items-center gap-1.5">
-            <IconButton
-              label={fav ? "Remove from favourites" : "Add to favourites"}
-              tooltip="Favourite"
-              onClick={() => toggleFavourite(current)}
-              active={fav}
-              tone={fav ? "rose" : "default"}
-              aria-pressed={fav}
-            >
-              <Heart size={20} filled={fav} />
-            </IconButton>
-
-            <IconButton label="Share this song" tooltip="Share" onClick={share}>
-              <Share size={19} />
-            </IconButton>
-
-            <a
-              href={`https://www.youtube.com/watch?v=${current.youtubeId}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Open this song on YouTube"
-              data-tooltip="Open on YouTube"
-              className="icon-btn tap-target h-11 w-11 text-white/65 hover:text-white"
-            >
-              <ExternalLink size={18} />
-            </a>
-
-            <IconButton label="Open queue" tooltip="Queue" onClick={toggleQueuePanel}>
-              <QueueIcon size={19} />
-            </IconButton>
+            {error ? (
+              <p role="alert" className="mt-3 text-xs text-[color:var(--color-rose)]">
+                {error}
+              </p>
+            ) : null}
           </div>
 
-          <div className="flex items-center gap-2.5">
-            <IconButton
-              label={muted || volume === 0 ? "Unmute" : "Mute"}
-              tooltip="Mute"
-              onClick={toggleMute}
-            >
-              {muted || volume === 0 ? <VolumeMute size={20} /> : <Volume size={20} />}
-            </IconButton>
-            <input
-              type="range"
-              className="vol w-32 sm:w-40"
-              min={0}
-              max={100}
-              step={1}
-              value={muted ? 0 : volume}
-              onChange={(e) => setVolume(Number(e.target.value))}
-              aria-label="Volume"
-              aria-valuetext={`${muted ? 0 : volume} percent`}
-            />
+          {/* Timeline */}
+          <div className="mt-6">
+            <ProgressBar currentTime={currentTime} duration={duration} onSeek={seekTo} size="lg" />
+          </div>
+
+          {/* Main transport: shuffle · prev · play/pause · next · repeat */}
+          <div className="mt-6">
+            <PlayerControls size="lg" showExtras />
+          </div>
+
+          {/* Secondary row */}
+          <div className="mt-7 flex flex-col items-center gap-4 border-t border-white/8 pt-5 sm:flex-row sm:justify-between">
+            <div className="flex items-center gap-1.5">
+              <IconButton
+                label={fav ? "Remove from favourites" : "Add to favourites"}
+                tooltip="Favourite"
+                onClick={() => toggleFavourite(current)}
+                active={fav}
+                tone={fav ? "rose" : "default"}
+                aria-pressed={fav}
+              >
+                <Heart size={20} filled={fav} />
+              </IconButton>
+
+              <IconButton label="Share this song" tooltip="Share" onClick={share}>
+                <Share size={19} />
+              </IconButton>
+
+              <a
+                href={`https://www.youtube.com/watch?v=${current.youtubeId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Open this song on YouTube"
+                data-tooltip="Open on YouTube"
+                className="icon-btn tap-target h-11 w-11 text-white/65 hover:text-white"
+              >
+                <ExternalLink size={18} />
+              </a>
+
+              <IconButton label="Open queue" tooltip="Queue" onClick={toggleQueuePanel}>
+                <QueueIcon size={19} />
+              </IconButton>
+            </div>
+
+            <div className="flex w-full items-center gap-2.5 sm:w-auto">
+              <IconButton
+                label={muted || volume === 0 ? "Unmute" : "Mute"}
+                tooltip="Mute"
+                onClick={toggleMute}
+              >
+                {muted || volume === 0 ? <VolumeMute size={20} /> : <Volume size={20} />}
+              </IconButton>
+              <input
+                type="range"
+                className="vol w-full sm:w-40"
+                min={0}
+                max={100}
+                step={1}
+                value={muted ? 0 : volume}
+                onChange={(e) => setVolume(Number(e.target.value))}
+                aria-label="Volume"
+                aria-valuetext={`${muted ? 0 : volume} percent`}
+              />
+            </div>
           </div>
         </div>
 
         {upNext ? (
-          <p className="line-1 max-w-xl text-center text-[0.7rem] text-white/32">
-            Up next · {cleanTitle(upNext.title).slice(0, 52)}
-          </p>
+          <button
+            type="button"
+            onClick={toggleQueuePanel}
+            className="mt-4 block w-full max-w-[560px] shrink-0 overflow-hidden text-ellipsis whitespace-nowrap px-2 text-center text-[0.72rem] text-white/34 transition hover:text-white/65"
+          >
+            Up next · {cleanTitle(upNext.title)}
+          </button>
         ) : null}
       </div>
     </div>

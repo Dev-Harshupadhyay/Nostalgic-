@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { PlayerProvider } from "@/components/player/PlayerProvider";
+import { UserProvider } from "@/components/user/UserProvider";
+import WelcomeGate from "@/components/user/WelcomeGate";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import MiniPlayer from "@/components/player/MiniPlayer";
@@ -120,6 +122,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <div className="scanlines" aria-hidden />
 
         <PlayerProvider>
+          <UserProvider>
           <div className="flex min-h-dvh flex-col">
             <Header />
             <main id="main" className="player-gap flex-1">
@@ -132,6 +135,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <FullPlayer />
           <QueuePanel />
           <WelcomeToast />
+          <WelcomeGate />
+          </UserProvider>
         </PlayerProvider>
 
         <Analytics />

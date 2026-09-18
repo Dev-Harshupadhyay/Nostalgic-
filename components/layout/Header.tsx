@@ -13,6 +13,7 @@ export const TABS = [
   { href: "/trending", label: "New & Trending", emoji: "🔥", hint: "What's new" },
   { href: "/chhath", label: "Chhath Puja", emoji: "🪔", hint: "Traditional vibes" },
   { href: "/bhojpuri", label: "Bhojpuri", emoji: "🎤", hint: "Desi vibes" },
+  { href: "/live", label: "Live Song", emoji: "📡", hint: "Play live from YouTube" },
   { href: "/search", label: "Search", emoji: "🔎", hint: "Find any song" },
 ] as const;
 

@@ -97,8 +97,18 @@ function readJSON<T>(key: string, fallback: T): T {
   }
 }
 
+/**
+ * Set by the user provider once consent resolves. A single gate here means no
+ * persistence path can accidentally bypass a refusal, and the app still runs
+ * perfectly in memory when storage is declined.
+ */
+let persistAllowed = false;
+export function setPersistAllowed(allowed: boolean) {
+  persistAllowed = allowed;
+}
+
 function writeJSON(key: string, value: unknown) {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined" || !persistAllowed) return;
   try {
     window.localStorage.setItem(key, JSON.stringify(value));
   } catch {
@@ -170,6 +180,19 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   /* True as soon as the user deliberately loads any track. */
   const userLoadedRef = useRef(false);
   const advanceRef = useRef<(auto: boolean) => void>(() => {});
+  const previousRef = useRef<() => void>(() => {});
+  /* Stable handle to the live player for lock-screen handlers. */
+  const playerRef = useRef<{
+    play: () => void;
+    pause: () => void;
+    seek: (seconds: number) => void;
+    getCurrentTime: () => number;
+  }>({
+    play: () => {},
+    pause: () => {},
+    seek: () => {},
+    getCurrentTime: () => 0,
+  });
   const loadRef = useRef<(song: Song, autoplay: boolean, startAt?: number) => void>(() => {});
 
   const player = useYouTubePlayer(
@@ -269,31 +292,72 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   /* ------------------------------ Progress ------------------------------- */
 
   /**
-   * Single rAF loop, throttled to ~4 updates/sec. The YouTube player is the only
-   * source of truth for time — we never run an independent timer.
+   * Progress loop. The YouTube player is the only source of truth for time —
+   * we never run an independent timer.
+   *
+   * rAF is throttled (often stopped entirely) in a hidden tab, which would
+   * freeze the UI clock while audio kept playing in the background. So we use
+   * rAF while visible for smoothness, and fall back to a plain interval when
+   * the page is hidden, swapping automatically on visibilitychange.
    */
   useEffect(() => {
     if (!isPlaying) return;
+
     let raf = 0;
+    let interval = 0;
     let last = 0;
+
+    const sample = () => {
+      if (!seekingRef.current) {
+        const t = player.getCurrentTime();
+        if (Number.isFinite(t)) setCurrentTime(t);
+      }
+      const d = player.getDuration();
+      if (Number.isFinite(d) && d > 0) {
+        setDuration((prev) => (Math.abs(prev - d) > 0.5 ? d : prev));
+      }
+    };
 
     const tick = (ts: number) => {
       if (ts - last >= 250) {
         last = ts;
-        if (!seekingRef.current) {
-          const t = player.getCurrentTime();
-          if (Number.isFinite(t)) setCurrentTime(t);
-        }
-        const d = player.getDuration();
-        if (Number.isFinite(d) && d > 0) {
-          setDuration((prev) => (Math.abs(prev - d) > 0.5 ? d : prev));
-        }
+        sample();
       }
       raf = window.requestAnimationFrame(tick);
     };
 
-    raf = window.requestAnimationFrame(tick);
-    return () => window.cancelAnimationFrame(raf);
+    const startForeground = () => {
+      window.clearInterval(interval);
+      interval = 0;
+      cancelAnimationFrame(raf);
+      raf = window.requestAnimationFrame(tick);
+    };
+
+    const startBackground = () => {
+      cancelAnimationFrame(raf);
+      raf = 0;
+      window.clearInterval(interval);
+      // 1s is plenty while hidden and survives background throttling.
+      interval = window.setInterval(sample, 1000);
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") startBackground();
+      else {
+        startForeground();
+        sample(); // resync immediately on return
+      }
+    };
+
+    if (document.visibilityState === "hidden") startBackground();
+    else startForeground();
+
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      cancelAnimationFrame(raf);
+      window.clearInterval(interval);
+    };
   }, [isPlaying, player]);
 
   /* Persist a resume point (throttled). */
@@ -327,6 +391,68 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       /* unsupported browser */
     }
   }, [current, isPlaying]);
+
+  /* Lock-screen / notification / headset buttons.
+     Registered once and driven through refs, so the handlers stay valid while
+     the screen is off and never need re-binding on every render. */
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !("mediaSession" in navigator)) return;
+    const ms = navigator.mediaSession;
+    const set = (action: MediaSessionAction, handler: (() => void) | null) => {
+      try {
+        ms.setActionHandler(action, handler);
+      } catch {
+        /* action unsupported on this browser — ignore it */
+      }
+    };
+
+    set("play", () => playerRef.current?.play());
+    set("pause", () => playerRef.current?.pause());
+    set("previoustrack", () => previousRef.current());
+    set("nexttrack", () => advanceRef.current(false));
+    set("seekbackward", () => {
+      const t = Math.max(0, playerRef.current?.getCurrentTime() - 10);
+      playerRef.current?.seek(t);
+    });
+    set("seekforward", () => {
+      const t = playerRef.current?.getCurrentTime() + 10;
+      playerRef.current?.seek(t);
+    });
+    set("seekto", (details?: MediaSessionActionDetails) => {
+      if (typeof details?.seekTime === "number") playerRef.current?.seek(details.seekTime);
+    });
+    set("stop", () => playerRef.current?.pause());
+
+    return () => {
+      for (const a of [
+        "play",
+        "pause",
+        "previoustrack",
+        "nexttrack",
+        "seekbackward",
+        "seekforward",
+        "seekto",
+        "stop",
+      ] as MediaSessionAction[]) {
+        set(a, null);
+      }
+    };
+  }, []);
+
+  /* Keep the lock-screen scrubber in sync with real playback position. */
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !("mediaSession" in navigator)) return;
+    if (!duration || !Number.isFinite(duration)) return;
+    try {
+      navigator.mediaSession.setPositionState?.({
+        duration,
+        position: Math.min(currentTime, duration),
+        playbackRate: 1,
+      });
+    } catch {
+      /* Safari throws if position > duration mid-seek — harmless */
+    }
+  }, [currentTime, duration]);
 
   /* ------------------------------ Transport ------------------------------ */
 
@@ -399,6 +525,23 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     advanceRef.current = advance;
   }, [advance]);
+
+  useEffect(() => {
+    playerRef.current = {
+      play: () => player.play(),
+      pause: () => player.pause(),
+      seek: (t: number) => {
+        seekingRef.current = true;
+        setCurrentTime(t);
+        player.seekTo(t);
+        window.setTimeout(() => {
+          seekingRef.current = false;
+        }, 350);
+      },
+      getCurrentTime: () => player.getCurrentTime(),
+    };
+    previousRef.current = previous;
+  });
 
   const playQueue = useCallback(
     (songs: Song[], startIndex = 0) => {

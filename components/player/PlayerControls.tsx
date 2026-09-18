@@ -18,7 +18,7 @@ type Props = { size?: "sm" | "md" | "lg"; showExtras?: boolean };
 const MAIN = {
   sm: { btn: "h-11 w-11", icon: 18 },
   md: { btn: "h-14 w-14", icon: 22 },
-  lg: { btn: "h-[68px] w-[68px]", icon: 28 },
+  lg: { btn: "h-16 w-16 shrink-0 sm:h-[68px] sm:w-[68px]", icon: 28 },
 };
 
 export default function PlayerControls({ size = "md", showExtras = false }: Props) {

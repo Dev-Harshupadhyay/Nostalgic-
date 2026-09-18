@@ -8,6 +8,7 @@ const ROUTES = [
   { path: "/trending", priority: 0.9 },
   { path: "/chhath", priority: 0.85 },
   { path: "/bhojpuri", priority: 0.85 },
+  { path: "/live", priority: 0.7 },
   { path: "/search", priority: 0.6 },
   { path: "/support", priority: 0.5 },
   { path: "/developer", priority: 0.5 },

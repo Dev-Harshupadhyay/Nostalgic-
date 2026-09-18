@@ -253,7 +253,7 @@ export default function SearchClient() {
   return (
     <div className="space-y-5">
       {/* ------------------------------ Search bar ----------------------------- */}
-      <div className="glass sticky top-[62px] z-30 rounded-2xl p-2.5 sm:p-3">
+      <div className="pp-card sticky top-[62px] z-30 !rounded-[22px] p-2.5 sm:p-3">
         <form
           role="search"
           onSubmit={(e) => {
