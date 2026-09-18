@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import GlowButton from "@/components/ui/GlowButton";
-import { SUPPORT, buildUpiLink } from "@/lib/site";
+import { SUPPORT, DEV, buildUpiLink } from "@/lib/site";
 import { usePlayer } from "@/components/player/PlayerProvider";
+import QrModal from "@/components/support/QrModal";
 
 type Props = { compact?: boolean; hideHeading?: boolean };
 
@@ -20,6 +21,17 @@ export default function SupportCard({ compact = false, hideHeading = false }: Pr
   const [custom, setCustom] = useState("");
   const [customMode, setCustomMode] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState<boolean | null>(null);
+
+  /* Desktop cannot hand off to a `upi://` app — offer a scannable QR instead. */
+  useEffect(() => {
+    const check = () =>
+      setIsMobile(window.matchMedia("(pointer: coarse)").matches || window.innerWidth < 820);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
 
   const effective = useMemo(() => {
     if (!customMode) return amount;
@@ -32,6 +44,10 @@ export default function SupportCard({ compact = false, hideHeading = false }: Pr
   const pay = () => {
     if (!valid) {
       notify("Enter a valid amount first");
+      return;
+    }
+    if (!isMobile) {
+      setQrOpen(true);
       return;
     }
     // Deep-links into GPay / PhonePe / Paytm / any UPI app on the device.
@@ -145,9 +161,19 @@ export default function SupportCard({ compact = false, hideHeading = false }: Pr
       </div>
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
-        <GlowButton size="lg" aura onClick={pay} disabled={!valid} aria-label={`Support ₹${effective || 0} via UPI`}>
-          <span aria-hidden>❤️</span>
-          Support ₹{effective || 0}
+        <GlowButton
+          size="lg"
+          aura
+          onClick={pay}
+          disabled={!valid}
+          aria-label={
+            isMobile === false
+              ? `Show QR code to pay ₹${effective || 0} to ${DEV.fullName}`
+              : `Support ₹${effective || 0} via UPI`
+          }
+        >
+          <span aria-hidden>{isMobile === false ? "📱" : "❤️"}</span>
+          {isMobile === false ? `Show QR · ₹${effective || 0}` : `Support ₹${effective || 0}`}
         </GlowButton>
 
         <GlowButton size="lg" variant="ghost" onClick={copyUpi}>
@@ -158,8 +184,20 @@ export default function SupportCard({ compact = false, hideHeading = false }: Pr
       <p className="mt-4 text-[0.7rem] leading-relaxed text-white/38">
         Tapping “Support” opens your UPI app (GPay, PhonePe, Paytm…) with the amount pre-filled.
         This site does not process or store any payment — only your UPI app can confirm a
-        transaction. On desktop, copy the UPI ID and pay from your phone.
+        transaction. On desktop, scan the QR with your phone or copy the UPI ID.
       </p>
+
+      <QrModal
+        open={qrOpen}
+        onClose={() => setQrOpen(false)}
+        amount={effective}
+        presets={SUPPORT.presets}
+        onAmountChange={(a) => {
+          setCustomMode(false);
+          setAmount(a);
+        }}
+        notify={notify}
+      />
     </section>
   );
 }

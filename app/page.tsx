@@ -2,7 +2,7 @@ import Link from "next/link";
 import Hero from "@/components/home/Hero";
 import Introduction from "@/components/home/Introduction";
 import SongShelf from "@/components/music/SongShelf";
-import SupportCard from "@/components/support/SupportCard";
+import SupportSpotlight from "@/components/support/SupportSpotlight";
 import { RecentlyPlayed, ContinueListening } from "@/components/home/RecentlyPlayed";
 import { catalog } from "@/lib/catalog";
 import { ChevronRight } from "@/components/ui/Icons";
@@ -95,7 +95,7 @@ export default function HomePage() {
           compact
         />
 
-        <SupportCard />
+        <SupportSpotlight />
       </div>
     </>
   );

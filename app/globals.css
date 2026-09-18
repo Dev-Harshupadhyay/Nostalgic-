@@ -1249,6 +1249,129 @@ h1, h2, h3, h4 {
 
 /* --------------------------- Reduced motion ------------------------------- */
 
+/* ===================== Support / donate section (sp-*) ===================== */
+
+/* Animated gradient sweep across the heading. Uses background-clip so the
+   text itself carries the shimmer instead of an overlay element. */
+.sp-shimmer {
+  background: linear-gradient(
+    100deg,
+    #ffd9a0 0%,
+    var(--color-amber) 22%,
+    #fff3dd 42%,
+    var(--color-amber) 62%,
+    #ffd9a0 100%
+  );
+  background-size: 260% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: sp-shimmer 5.5s linear infinite;
+}
+
+@keyframes sp-shimmer {
+  0%   { background-position: 180% 50%; }
+  100% { background-position: -80% 50%; }
+}
+
+/* Per-word rise used on the sub-heading. Delay is set inline per word. */
+.sp-word {
+  display: inline-block;
+  animation: sp-word-in 0.62s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+@keyframes sp-word-in {
+  from { opacity: 0; transform: translateY(0.5em) rotateX(-40deg); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Slow aurora drift behind the whole card. */
+.sp-aurora {
+  position: absolute;
+  inset: -40%;
+  background:
+    radial-gradient(38% 42% at 22% 30%, rgba(232, 163, 61, 0.30), transparent 70%),
+    radial-gradient(34% 38% at 78% 68%, rgba(212, 84, 106, 0.24), transparent 70%),
+    radial-gradient(30% 34% at 55% 18%, rgba(120, 190, 255, 0.14), transparent 70%);
+  filter: blur(46px);
+  animation: sp-aurora 17s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes sp-aurora {
+  0%   { transform: translate3d(-4%, -2%, 0) scale(1); }
+  50%  { transform: translate3d(3%, 2%, 0) scale(1.08); }
+  100% { transform: translate3d(-2%, 3%, 0) scale(1.03); }
+}
+
+/* Expanding ring behind the primary pay button. */
+.sp-pulse-ring::before,
+.sp-pulse-ring::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 999px;
+  border: 1px solid rgba(232, 163, 61, 0.55);
+  animation: sp-ring 2.8s ease-out infinite;
+  pointer-events: none;
+}
+.sp-pulse-ring::after { animation-delay: 1.4s; }
+
+@keyframes sp-ring {
+  0%   { opacity: 0.75; transform: scale(1); }
+  70%  { opacity: 0;    transform: scale(1.22); }
+  100% { opacity: 0;    transform: scale(1.22); }
+}
+
+/* "Works with" logo chips. */
+.sp-chip {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.42rem 0.7rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.045);
+  color: rgba(255, 255, 255, 0.72);
+  transition: border-color 0.25s, background 0.25s, transform 0.25s;
+}
+.sp-chip svg { flex: 0 0 auto; overflow: visible; }
+.sp-chip:hover {
+  border-color: rgba(232, 163, 61, 0.42);
+  background: rgba(232, 163, 61, 0.08);
+  transform: translateY(-2px);
+}
+
+/* Amount pills: the active one gets a soft lift + glow. */
+.sp-pill {
+  position: relative;
+  border-radius: 999px;
+  font-weight: 700;
+  transition: transform 0.2s cubic-bezier(0.2, 0.7, 0.3, 1), box-shadow 0.25s, border-color 0.25s;
+}
+.sp-pill[aria-pressed="true"] {
+  transform: translateY(-2px);
+  box-shadow:
+    0 0 0 1px rgba(232, 163, 61, 0.55),
+    0 8px 26px -8px rgba(232, 163, 61, 0.65);
+}
+.sp-pill:active { transform: translateY(0) scale(0.97); }
+
+/* Heart that beats next to the heading. */
+.sp-heart {
+  display: inline-block;
+  animation: sp-beat 1.9s ease-in-out infinite;
+  transform-origin: center;
+}
+
+@keyframes sp-beat {
+  0%, 62%, 100% { transform: scale(1); }
+  14%           { transform: scale(1.22); }
+  28%           { transform: scale(1); }
+  42%           { transform: scale(1.14); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -1280,4 +1403,17 @@ h1, h2, h3, h4 {
   /* With motion off the duplicate marquee copy would just be repeated text. */
   .pp-marquee-gap,
   .pp-marquee-dup { display: none !important; }
+  /* Support section: keep the colour, drop every moving part. */
+  .sp-shimmer {
+    animation: none !important;
+    background-position: 50% 50%;
+  }
+  .sp-word { animation: none !important; opacity: 1; transform: none; }
+  .sp-aurora { animation: none !important; }
+  .sp-pulse-ring::before,
+  .sp-pulse-ring::after { animation: none !important; opacity: 0; }
+  .sp-heart { animation: none !important; }
+  .sp-chip svg { flex: 0 0 auto; overflow: visible; }
+.sp-chip:hover { transform: none; }
+  .sp-pill[aria-pressed="true"] { transform: none; }
 }
