@@ -11,47 +11,23 @@ import {
 } from "react";
 import type { PlayerStatus, RepeatMode, Song } from "@/lib/types";
 import { shortTitle } from "@/lib/format";
+import { useYouTubePlayer, type YTState } from "@/lib/useYouTubePlayer";
 
-/* ------------------------------ YT typings ------------------------------ */
-
-type YTPlayer = {
-  playVideo: () => void;
-  pauseVideo: () => void;
-  stopVideo: () => void;
-  loadVideoById: (id: string) => void;
-  cueVideoById: (id: string) => void;
-  seekTo: (seconds: number, allowSeekAhead: boolean) => void;
-  setVolume: (v: number) => void;
-  getVolume: () => number;
-  mute: () => void;
-  unMute: () => void;
-  isMuted: () => boolean;
-  getDuration: () => number;
-  getCurrentTime: () => number;
-  getPlayerState: () => number;
-  destroy: () => void;
-};
-
-declare global {
-  interface Window {
-    YT?: {
-      Player: new (el: HTMLElement | string, opts: Record<string, unknown>) => YTPlayer;
-      PlayerState: Record<string, number>;
-    };
-    onYouTubeIframeAPIReady?: () => void;
-  }
-}
-
-const STORAGE_KEYS = {
+const STORAGE = {
   recent: "nostalgic:recent",
   favourites: "nostalgic:favourites",
   resume: "nostalgic:resume",
-  volume: "nostalgic:volume",
+  prefs: "nostalgic:prefs",
+  queue: "nostalgic:queue",
 };
 
 const MAX_RECENT = 24;
+/** Below this, Previous jumps to the earlier track; above it, it restarts. */
+export const PREVIOUS_RESTART_THRESHOLD = 4;
 
-/* ------------------------------- Context -------------------------------- */
+type Prefs = { volume: number; muted: boolean; repeat: RepeatMode; shuffle: boolean };
+
+const DEFAULT_PREFS: Prefs = { volume: 80, muted: false, repeat: "off", shuffle: false };
 
 type PlayerContextValue = {
   current: Song | null;
@@ -66,6 +42,8 @@ type PlayerContextValue = {
   shuffle: boolean;
   repeat: RepeatMode;
   error: string | null;
+  canGoNext: boolean;
+  canGoPrevious: boolean;
   fullPlayerOpen: boolean;
   queuePanelOpen: boolean;
   recentlyPlayed: Song[];
@@ -78,7 +56,6 @@ type PlayerContextValue = {
   next: () => void;
   previous: () => void;
   seekTo: (seconds: number) => void;
-  seekRatio: (ratio: number) => void;
   setVolume: (v: number) => void;
   toggleMute: () => void;
   toggleShuffle: () => void;
@@ -96,7 +73,6 @@ type PlayerContextValue = {
   toggleQueuePanel: () => void;
   setQueuePanelOpen: (open: boolean) => void;
   resumeLast: () => void;
-  registerHost: (el: HTMLElement | null) => void;
   notify: (message: string) => void;
   toastMessage: { id: number; text: string } | null;
 };
@@ -109,7 +85,7 @@ export function usePlayer(): PlayerContextValue {
   return ctx;
 }
 
-/* ------------------------------ Utilities ------------------------------- */
+/* ------------------------------- Storage --------------------------------- */
 
 function readJSON<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
@@ -126,57 +102,21 @@ function writeJSON(key: string, value: unknown) {
   try {
     window.localStorage.setItem(key, JSON.stringify(value));
   } catch {
-    /* storage may be full or blocked — non-fatal */
+    /* quota or private mode — never fatal */
   }
 }
 
-let apiPromise: Promise<void> | null = null;
-
-function loadYouTubeApi(): Promise<void> {
-  if (typeof window === "undefined") return Promise.resolve();
-  if (window.YT?.Player) return Promise.resolve();
-  if (apiPromise) return apiPromise;
-
-  apiPromise = new Promise<void>((resolve, reject) => {
-    const timeout = window.setTimeout(
-      () => reject(new Error("YouTube player took too long to load")),
-      20000
-    );
-    const previous = window.onYouTubeIframeAPIReady;
-    window.onYouTubeIframeAPIReady = () => {
-      previous?.();
-      window.clearTimeout(timeout);
-      resolve();
-    };
-    if (!document.getElementById("yt-iframe-api")) {
-      const tag = document.createElement("script");
-      tag.id = "yt-iframe-api";
-      tag.src = "https://www.youtube.com/iframe_api";
-      tag.async = true;
-      tag.onerror = () => {
-        window.clearTimeout(timeout);
-        reject(new Error("Failed to load the YouTube player"));
-      };
-      document.head.appendChild(tag);
-    }
-  });
-  apiPromise.catch(() => {
-    apiPromise = null;
-  });
-  return apiPromise;
-}
-
-function shuffled<T>(items: T[], keepFirst?: number): T[] {
-  const arr = [...items];
-  const head = keepFirst != null ? arr.splice(keepFirst, 1) : [];
-  for (let i = arr.length - 1; i > 0; i--) {
+function shuffleKeeping<T>(items: T[], keepIndex: number): T[] {
+  const rest = items.filter((_, i) => i !== keepIndex);
+  for (let i = rest.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
+    [rest[i], rest[j]] = [rest[j], rest[i]];
   }
-  return [...head, ...arr];
+  const head = items[keepIndex];
+  return head ? [head, ...rest] : rest;
 }
 
-/* ------------------------------- Provider ------------------------------- */
+/* ------------------------------- Provider -------------------------------- */
 
 export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [queue, setQueue] = useState<Song[]>([]);
@@ -184,10 +124,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<PlayerStatus>("idle");
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [volume, setVolumeState] = useState(80);
-  const [muted, setMuted] = useState(false);
-  const [shuffle, setShuffle] = useState(false);
-  const [repeat, setRepeat] = useState<RepeatMode>("off");
+  const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS);
   const [error, setError] = useState<string | null>(null);
   const [fullPlayerOpen, setFullPlayerOpen] = useState(false);
   const [queuePanelOpen, setQueuePanelOpen] = useState(false);
@@ -196,17 +133,11 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [resumeTarget, setResumeTarget] = useState<{ song: Song; position: number } | null>(null);
   const [toastMessage, setToastMessage] = useState<{ id: number; text: string } | null>(null);
 
-  const playerRef = useRef<YTPlayer | null>(null);
-  const holderRef = useRef<HTMLDivElement | null>(null); // persistent off-DOM-safe container
-  const hostRef = useRef<HTMLElement | null>(null); // where the iframe is visually parented
-  const readyRef = useRef(false);
-  const pendingRef = useRef<{ song: Song; autoplay: boolean; startAt?: number } | null>(null);
-  const currentIdRef = useRef<string | null>(null);
-  const userInteractedRef = useRef(false);
+  /* Mirrors for use inside stable callbacks / player events. */
   const queueRef = useRef<Song[]>([]);
   const indexRef = useRef(-1);
-  const repeatRef = useRef<RepeatMode>("off");
-  const shuffleRef = useRef(false);
+  const prefsRef = useRef<Prefs>(DEFAULT_PREFS);
+  const seekingRef = useRef(false);
 
   const current = queueIndex >= 0 ? queue[queueIndex] ?? null : null;
   const isPlaying = status === "playing" || status === "buffering";
@@ -218,210 +149,163 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     indexRef.current = queueIndex;
   }, [queueIndex]);
   useEffect(() => {
-    repeatRef.current = repeat;
-  }, [repeat]);
-  useEffect(() => {
-    shuffleRef.current = shuffle;
-  }, [shuffle]);
+    prefsRef.current = prefs;
+  }, [prefs]);
 
   const notify = useCallback((text: string) => {
     setToastMessage({ id: Date.now() + Math.random(), text });
   }, []);
 
-  /* ---------------------- Restore persisted state ---------------------- */
-
-  useEffect(() => {
-    setRecentlyPlayed(readJSON<Song[]>(STORAGE_KEYS.recent, []));
-    setFavourites(readJSON<Song[]>(STORAGE_KEYS.favourites, []));
-    const savedVolume = readJSON<number | null>(STORAGE_KEYS.volume, null);
-    if (typeof savedVolume === "number") setVolumeState(savedVolume);
-    const resume = readJSON<{ song: Song; position: number } | null>(STORAGE_KEYS.resume, null);
-    if (resume?.song?.youtubeId) setResumeTarget(resume);
+  const savePrefs = useCallback((patch: Partial<Prefs>) => {
+    setPrefs((prev) => {
+      const next = { ...prev, ...patch };
+      prefsRef.current = next;
+      writeJSON(STORAGE.prefs, next);
+      return next;
+    });
   }, []);
 
-  /* --------------------------- Player bootstrap ------------------------- */
+  /* ------------------------- YouTube abstraction ------------------------- */
 
-  const applyPending = useCallback(() => {
-    const pending = pendingRef.current;
-    const player = playerRef.current;
-    if (!pending || !player || !readyRef.current) return;
-    pendingRef.current = null;
-    currentIdRef.current = pending.song.youtubeId;
-    setError(null);
-    setStatus("loading");
-    setCurrentTime(pending.startAt ?? 0);
-    setDuration(0);
-    try {
-      if (pending.autoplay) player.loadVideoById(pending.song.youtubeId);
-      else player.cueVideoById(pending.song.youtubeId);
-      if (pending.startAt) {
+  /* True as soon as the user deliberately loads any track. */
+  const userLoadedRef = useRef(false);
+  const advanceRef = useRef<(auto: boolean) => void>(() => {});
+  const loadRef = useRef<(song: Song, autoplay: boolean, startAt?: number) => void>(() => {});
+
+  const player = useYouTubePlayer(
+    {
+      onStateChange: (state: YTState) => {
+        if (state === "playing") {
+          setStatus("playing");
+          setError(null);
+          const d = player.getDuration();
+          if (d > 0) setDuration(d);
+        } else if (state === "paused") {
+          // A pause fired while seeking is a transient artefact, not a real pause.
+          if (!seekingRef.current) setStatus("paused");
+        } else if (state === "buffering") {
+          setStatus("buffering");
+        } else if (state === "cued") {
+          setStatus("paused");
+          const d = player.getDuration();
+          if (d > 0) setDuration(d);
+        }
+      },
+      onEnded: () => {
+        setStatus("ended");
+        advanceRef.current(true);
+      },
+      onError: () => {
+        setStatus("error");
+        setError("Unable to play this song. Try another track.");
+        // Skip forward so one dead video doesn't stall the whole queue.
         window.setTimeout(() => {
-          try {
-            player.seekTo(pending.startAt!, true);
-          } catch {
-            /* ignore */
-          }
-        }, 400);
-      }
-    } catch {
-      setStatus("error");
-      setError("This song could not be loaded. Try another one.");
-    }
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    // A stable holder div that lives for the app's lifetime. We move this node
-    // between mount points (mini player / full player) instead of recreating
-    // the iframe, so playback never restarts on navigation.
-    const holder = document.createElement("div");
-    holder.id = "nostalgic-yt-holder";
-    holder.style.width = "100%";
-    holder.style.height = "100%";
-    holderRef.current = holder;
-
-    const inner = document.createElement("div");
-    inner.id = "nostalgic-yt-frame";
-    holder.appendChild(inner);
-
-    if (hostRef.current) hostRef.current.appendChild(holder);
-    else {
-      holder.style.position = "fixed";
-      holder.style.left = "-9999px";
-      holder.style.top = "0";
-      holder.style.width = "1px";
-      holder.style.height = "1px";
-      document.body.appendChild(holder);
-    }
-
-    loadYouTubeApi()
-      .then(() => {
-        if (cancelled || !window.YT) return;
-        playerRef.current = new window.YT.Player(inner, {
-          width: "100%",
-          height: "100%",
-          playerVars: {
-            playsinline: 1,
-            rel: 0,
-            modestbranding: 1,
-            iv_load_policy: 3,
-            origin: typeof window !== "undefined" ? window.location.origin : undefined,
-          },
-          events: {
-            onReady: (e: { target: YTPlayer }) => {
-              readyRef.current = true;
-              try {
-                e.target.setVolume(volume);
-              } catch {
-                /* ignore */
-              }
-              applyPending();
-            },
-            onStateChange: (e: { data: number }) => {
-              const S = window.YT?.PlayerState ?? {};
-              const player = playerRef.current;
-              if (e.data === S.PLAYING) {
-                setStatus("playing");
-                setError(null);
-                if (player) setDuration(player.getDuration() || 0);
-              } else if (e.data === S.PAUSED) setStatus("paused");
-              else if (e.data === S.BUFFERING) setStatus("buffering");
-              else if (e.data === S.CUED) setStatus("paused");
-              else if (e.data === S.ENDED) {
-                setStatus("ended");
-                handleEnded();
-              }
-            },
-            onError: () => {
-              setStatus("error");
-              setError("This song is unavailable on YouTube. Skipping to the next one.");
-              window.setTimeout(() => {
-                if (queueRef.current.length > 1) goNext(true);
-              }, 1400);
-            },
-          },
-        });
-      })
-      .catch(() => {
-        if (cancelled) return;
+          if (queueRef.current.length > 1) advanceRef.current(true);
+        }, 1600);
+      },
+      onApiFailure: () => {
         setStatus("error");
         setError("Music service is temporarily unavailable. Please try again.");
-      });
+      },
+    },
+    DEFAULT_PREFS.volume
+  );
 
-    return () => {
-      cancelled = true;
-      try {
-        playerRef.current?.destroy();
-      } catch {
-        /* ignore */
-      }
-      playerRef.current = null;
-      readyRef.current = false;
-      holder.remove();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  /* --------------------------- Restore on mount -------------------------- */
 
-  /** Lets the mini/full player claim the persistent iframe node. */
-  const registerHost = useCallback((el: HTMLElement | null) => {
-    hostRef.current = el;
-    const holder = holderRef.current;
-    if (!holder) return;
-    if (el) {
-      holder.style.position = "";
-      holder.style.left = "";
-      holder.style.top = "";
-      holder.style.width = "100%";
-      holder.style.height = "100%";
-      if (holder.parentElement !== el) el.appendChild(holder);
-    } else if (holder.parentElement !== document.body) {
-      holder.style.position = "fixed";
-      holder.style.left = "-9999px";
-      holder.style.top = "0";
-      holder.style.width = "1px";
-      holder.style.height = "1px";
-      document.body.appendChild(holder);
+  useEffect(() => {
+    setRecentlyPlayed(readJSON<Song[]>(STORAGE.recent, []));
+    setFavourites(readJSON<Song[]>(STORAGE.favourites, []));
+
+    const storedPrefs = readJSON<Partial<Prefs>>(STORAGE.prefs, {});
+    const merged = { ...DEFAULT_PREFS, ...storedPrefs };
+    setPrefs(merged);
+    prefsRef.current = merged;
+
+    const resume = readJSON<{ song: Song; position: number } | null>(STORAGE.resume, null);
+    if (resume?.song?.youtubeId) setResumeTarget(resume);
+
+    /* Restore the queue but NEVER autoplay — the song is only cued, so
+       reopening the site is always silent until the user asks for sound. */
+    const savedQueue = readJSON<{ songs: Song[]; index: number } | null>(STORAGE.queue, null);
+    if (savedQueue?.songs?.length) {
+      const idx = Math.min(Math.max(savedQueue.index, 0), savedQueue.songs.length - 1);
+      setQueue(savedQueue.songs);
+      queueRef.current = savedQueue.songs;
+      setQueueIndex(idx);
+      indexRef.current = idx;
     }
   }, []);
 
-  /* ------------------------------ Progress ------------------------------ */
+  /* Apply restored volume/mute once the player is live. */
+  useEffect(() => {
+    if (!player.ready) return;
+    player.setVolume(prefsRef.current.volume);
+    if (prefsRef.current.muted) player.mute();
+  }, [player.ready, player]);
 
+  /* Cue (never autoplay) the restored track once the player is ready.
+     Skipped entirely if the user already asked for a song while the iframe was
+     still booting — otherwise this would re-cue (and therefore silence) the very
+     track they just pressed play on. */
+  const cuedRestoreRef = useRef(false);
+  useEffect(() => {
+    if (!player.ready || cuedRestoreRef.current || userLoadedRef.current) return;
+    const song = queueRef.current[indexRef.current];
+    if (!song) return;
+    cuedRestoreRef.current = true;
+    const resume = readJSON<{ song: Song; position: number } | null>(STORAGE.resume, null);
+    const startAt = resume?.song?.youtubeId === song.youtubeId ? resume.position : 0;
+    setStatus("paused");
+    player.loadVideo(song.youtubeId, { autoplay: false, startAt });
+  }, [player.ready, player]);
+
+  /* Persist the queue so it survives a refresh. */
+  useEffect(() => {
+    if (queue.length === 0) return;
+    writeJSON(STORAGE.queue, { songs: queue.slice(0, 60), index: queueIndex });
+  }, [queue, queueIndex]);
+
+  /* ------------------------------ Progress ------------------------------- */
+
+  /**
+   * Single rAF loop, throttled to ~4 updates/sec. The YouTube player is the only
+   * source of truth for time — we never run an independent timer.
+   */
   useEffect(() => {
     if (!isPlaying) return;
     let raf = 0;
     let last = 0;
+
     const tick = (ts: number) => {
-      if (ts - last > 400) {
+      if (ts - last >= 250) {
         last = ts;
-        const player = playerRef.current;
-        if (player && readyRef.current) {
-          try {
-            const t = player.getCurrentTime();
-            const d = player.getDuration();
-            if (Number.isFinite(t)) setCurrentTime(t);
-            if (Number.isFinite(d) && d > 0) setDuration(d);
-          } catch {
-            /* transient */
-          }
+        if (!seekingRef.current) {
+          const t = player.getCurrentTime();
+          if (Number.isFinite(t)) setCurrentTime(t);
+        }
+        const d = player.getDuration();
+        if (Number.isFinite(d) && d > 0) {
+          setDuration((prev) => (Math.abs(prev - d) > 0.5 ? d : prev));
         }
       }
       raf = window.requestAnimationFrame(tick);
     };
+
     raf = window.requestAnimationFrame(tick);
     return () => window.cancelAnimationFrame(raf);
-  }, [isPlaying]);
+  }, [isPlaying, player]);
 
-  /* Persist resume point (throttled to whole seconds). */
+  /* Persist a resume point (throttled). */
   useEffect(() => {
-    if (!current || currentTime < 3) return;
+    if (!current || currentTime < 5) return;
     const id = window.setTimeout(() => {
-      writeJSON(STORAGE_KEYS.resume, { song: current, position: Math.floor(currentTime) });
-    }, 1500);
+      writeJSON(STORAGE.resume, { song: current, position: Math.floor(currentTime) });
+    }, 2000);
     return () => window.clearTimeout(id);
   }, [current, currentTime]);
 
-  /* Media Session (lock-screen controls on Android). */
+  /* Lock-screen / headset controls on Android. */
   useEffect(() => {
     if (typeof navigator === "undefined" || !("mediaSession" in navigator) || !current) return;
     try {
@@ -440,72 +324,88 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       });
       navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
     } catch {
-      /* not supported */
+      /* unsupported browser */
     }
   }, [current, isPlaying]);
 
-  /* ----------------------------- Transport ----------------------------- */
+  /* ------------------------------ Transport ------------------------------ */
 
   const pushRecent = useCallback((song: Song) => {
     setRecentlyPlayed((prev) => {
-      const next = [song, ...prev.filter((s) => s.youtubeId !== song.youtubeId)].slice(
-        0,
-        MAX_RECENT
-      );
-      writeJSON(STORAGE_KEYS.recent, next);
+      const next = [song, ...prev.filter((s) => s.youtubeId !== song.youtubeId)].slice(0, MAX_RECENT);
+      writeJSON(STORAGE.recent, next);
       return next;
     });
   }, []);
 
+  /** Load a track: reset the timer first so the UI never shows stale progress. */
   const load = useCallback(
     (song: Song, autoplay: boolean, startAt?: number) => {
-      pendingRef.current = { song, autoplay, startAt };
+      if (autoplay) {
+        userLoadedRef.current = true;
+        cuedRestoreRef.current = true;
+      }
+      setError(null);
+      setStatus("loading");
+      setCurrentTime(startAt ?? 0);
+      setDuration(0);
       pushRecent(song);
-      if (readyRef.current && playerRef.current) applyPending();
-      else setStatus("loading");
+      player.loadVideo(song.youtubeId, { autoplay, startAt });
     },
-    [applyPending, pushRecent]
+    [player, pushRecent]
   );
 
-  const goNext = useCallback(
-    (auto = false) => {
+  useEffect(() => {
+    loadRef.current = load;
+  }, [load]);
+
+  /** Shared next-track logic for the button and for the ENDED event. */
+  const advance = useCallback(
+    (auto: boolean) => {
       const q = queueRef.current;
       const i = indexRef.current;
+      const repeat = prefsRef.current.repeat;
       if (!q.length) return;
-      if (auto && repeatRef.current === "one") {
-        const player = playerRef.current;
-        try {
-          player?.seekTo(0, true);
-          player?.playVideo();
-        } catch {
-          /* ignore */
+
+      if (auto && repeat === "one") {
+        setCurrentTime(0);
+        player.seekTo(0);
+        player.play();
+        return;
+      }
+
+      const atEnd = i >= q.length - 1;
+      if (atEnd) {
+        // Manual Next wraps; automatic advance only wraps with repeat = all.
+        if (!auto || repeat === "all") {
+          setQueueIndex(0);
+          indexRef.current = 0;
+          load(q[0], true);
+        } else {
+          setStatus("ended");
+          setCurrentTime(0);
         }
         return;
       }
-      let nextIndex = i + 1;
-      if (nextIndex >= q.length) {
-        if (repeatRef.current === "all" || !auto) nextIndex = 0;
-        else {
-          setStatus("paused");
-          return;
-        }
-      }
+
+      const nextIndex = i + 1;
       setQueueIndex(nextIndex);
+      indexRef.current = nextIndex;
       load(q[nextIndex], true);
     },
-    [load]
+    [load, player]
   );
 
-  function handleEnded() {
-    goNext(true);
-  }
+  useEffect(() => {
+    advanceRef.current = advance;
+  }, [advance]);
 
   const playQueue = useCallback(
     (songs: Song[], startIndex = 0) => {
       if (!songs.length) return;
-      userInteractedRef.current = true;
-      const ordered = shuffleRef.current ? shuffled(songs, startIndex) : songs;
-      const index = shuffleRef.current ? 0 : startIndex;
+      const safeStart = Math.min(Math.max(startIndex, 0), songs.length - 1);
+      const ordered = prefsRef.current.shuffle ? shuffleKeeping(songs, safeStart) : songs;
+      const index = prefsRef.current.shuffle ? 0 : safeStart;
       setQueue(ordered);
       queueRef.current = ordered;
       setQueueIndex(index);
@@ -517,7 +417,6 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
   const playSong = useCallback(
     (song: Song, contextQueue?: Song[]) => {
-      userInteractedRef.current = true;
       if (contextQueue?.length) {
         const idx = contextQueue.findIndex((s) => s.youtubeId === song.youtubeId);
         playQueue(contextQueue, idx >= 0 ? idx : 0);
@@ -542,125 +441,126 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   );
 
   const togglePlay = useCallback(() => {
-    const player = playerRef.current;
-    if (!player || !readyRef.current) return;
-    userInteractedRef.current = true;
-    try {
-      if (isPlaying) player.pauseVideo();
-      else player.playVideo();
-    } catch {
-      /* ignore */
+    if (!current) return;
+    if (status === "ended") {
+      setCurrentTime(0);
+      player.seekTo(0);
+      player.play();
+      return;
     }
-  }, [isPlaying]);
+    if (isPlaying) player.pause();
+    else player.play();
+  }, [current, isPlaying, player, status]);
 
   const previous = useCallback(() => {
-    const player = playerRef.current;
     const q = queueRef.current;
     const i = indexRef.current;
     if (!q.length) return;
-    // Standard behaviour: restart the track if we're past 4 seconds.
-    if (player && readyRef.current && player.getCurrentTime() > 4) {
-      try {
-        player.seekTo(0, true);
-        return;
-      } catch {
-        /* fall through */
-      }
+
+    // Standard music-player behaviour: restart if we're past the threshold.
+    if (player.getCurrentTime() > PREVIOUS_RESTART_THRESHOLD) {
+      setCurrentTime(0);
+      player.seekTo(0);
+      return;
     }
-    const prevIndex = i - 1 < 0 ? q.length - 1 : i - 1;
+    if (i <= 0) {
+      setCurrentTime(0);
+      player.seekTo(0);
+      return;
+    }
+    const prevIndex = i - 1;
     setQueueIndex(prevIndex);
+    indexRef.current = prevIndex;
     load(q[prevIndex], true);
-  }, [load]);
+  }, [load, player]);
 
-  const seekTo = useCallback((seconds: number) => {
-    const player = playerRef.current;
-    if (!player || !readyRef.current) return;
-    try {
-      player.seekTo(seconds, true);
-      setCurrentTime(seconds);
-    } catch {
-      /* ignore */
-    }
-  }, []);
-
-  const seekRatio = useCallback(
-    (ratio: number) => {
-      if (!duration) return;
-      seekTo(Math.min(Math.max(ratio, 0), 1) * duration);
+  /**
+   * Seek. `seekingRef` suppresses both the progress loop and the transient
+   * "paused" event YouTube emits mid-seek, so the thumb never jumps back.
+   */
+  const seekTo = useCallback(
+    (seconds: number) => {
+      if (!current) return;
+      const target = Math.max(0, duration ? Math.min(seconds, duration) : seconds);
+      seekingRef.current = true;
+      setCurrentTime(target);
+      player.seekTo(target);
+      window.setTimeout(() => {
+        seekingRef.current = false;
+      }, 320);
     },
-    [duration, seekTo]
+    [current, duration, player]
   );
 
-  const setVolume = useCallback((v: number) => {
-    const clamped = Math.min(100, Math.max(0, Math.round(v)));
-    setVolumeState(clamped);
-    writeJSON(STORAGE_KEYS.volume, clamped);
-    const player = playerRef.current;
-    try {
-      player?.setVolume(clamped);
-      if (clamped === 0) {
-        player?.mute();
-        setMuted(true);
-      } else if (player?.isMuted()) {
-        player.unMute();
-        setMuted(false);
-      }
-    } catch {
-      /* ignore */
-    }
-  }, []);
+  const setVolume = useCallback(
+    (v: number) => {
+      const clamped = Math.min(100, Math.max(0, Math.round(v)));
+      savePrefs({ volume: clamped, muted: clamped === 0 });
+      player.setVolume(clamped);
+      if (clamped === 0) player.mute();
+      else player.unMute();
+    },
+    [player, savePrefs]
+  );
 
   const toggleMute = useCallback(() => {
-    const player = playerRef.current;
-    if (!player || !readyRef.current) return;
-    try {
-      if (player.isMuted()) {
-        player.unMute();
-        setMuted(false);
-      } else {
-        player.mute();
-        setMuted(true);
+    const nextMuted = !prefsRef.current.muted;
+    savePrefs({ muted: nextMuted });
+    if (nextMuted) player.mute();
+    else {
+      player.unMute();
+      if (prefsRef.current.volume === 0) {
+        savePrefs({ volume: 60 });
+        player.setVolume(60);
       }
-    } catch {
-      /* ignore */
     }
-  }, []);
+  }, [player, savePrefs]);
 
   const toggleShuffle = useCallback(() => {
-    setShuffle((prev) => {
-      const next = !prev;
-      if (next) {
-        const q = queueRef.current;
-        const i = indexRef.current;
-        if (q.length > 1 && i >= 0) {
-          const reordered = shuffled(q, i);
-          setQueue(reordered);
-          queueRef.current = reordered;
-          setQueueIndex(0);
-          indexRef.current = 0;
-        }
+    const nextShuffle = !prefsRef.current.shuffle;
+    savePrefs({ shuffle: nextShuffle });
+    if (nextShuffle) {
+      const q = queueRef.current;
+      const i = indexRef.current;
+      if (q.length > 1 && i >= 0) {
+        const reordered = shuffleKeeping(q, i);
+        setQueue(reordered);
+        queueRef.current = reordered;
+        setQueueIndex(0);
+        indexRef.current = 0;
       }
-      return next;
-    });
-  }, []);
+    }
+    notify(nextShuffle ? "Shuffle on" : "Shuffle off");
+  }, [notify, savePrefs]);
 
   const cycleRepeat = useCallback(() => {
-    setRepeat((prev) => (prev === "off" ? "all" : prev === "all" ? "one" : "off"));
-  }, []);
+    const order: RepeatMode[] = ["off", "all", "one"];
+    const nextRepeat = order[(order.indexOf(prefsRef.current.repeat) + 1) % order.length];
+    savePrefs({ repeat: nextRepeat });
+    notify(
+      nextRepeat === "off"
+        ? "Repeat off"
+        : nextRepeat === "all"
+        ? "Repeat queue"
+        : "Repeat this song"
+    );
+  }, [notify, savePrefs]);
 
   const addToQueue = useCallback(
     (song: Song) => {
-      setQueue((prev) => {
-        if (prev.some((s) => s.youtubeId === song.youtubeId)) return prev;
-        const next = [...prev, song];
-        queueRef.current = next;
-        if (indexRef.current < 0) {
-          setQueueIndex(0);
-          indexRef.current = 0;
-          load(song, false);
-        }
-        return next;
-      });
+      const exists = queueRef.current.some((s) => s.youtubeId === song.youtubeId);
+      if (exists) {
+        notify("Already in queue");
+        return;
+      }
+      const next = [...queueRef.current, song];
+      setQueue(next);
+      queueRef.current = next;
+      if (indexRef.current < 0) {
+        setQueueIndex(0);
+        indexRef.current = 0;
+        load(song, false);
+      }
       notify(`Added to queue — ${shortTitle(song.title, 40)}`);
     },
     [load, notify]
@@ -668,51 +568,64 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
   const playNextInQueue = useCallback(
     (song: Song) => {
-      setQueue((prev) => {
-        const filtered = prev.filter((s) => s.youtubeId !== song.youtubeId);
-        const at = Math.max(indexRef.current, 0) + 1;
-        const next = [...filtered.slice(0, at), song, ...filtered.slice(at)];
-        queueRef.current = next;
-        return next;
-      });
+      const filtered = queueRef.current.filter((s) => s.youtubeId !== song.youtubeId);
+      const at = Math.max(indexRef.current, 0) + 1;
+      const next = [...filtered.slice(0, at), song, ...filtered.slice(at)];
+      setQueue(next);
+      queueRef.current = next;
       notify("Playing next");
     },
     [notify]
   );
 
-  const removeFromQueue = useCallback((index: number) => {
-    setQueue((prev) => {
-      const next = prev.filter((_, i) => i !== index);
+  const removeFromQueue = useCallback(
+    (index: number) => {
+      const q = queueRef.current;
+      if (index < 0 || index >= q.length) return;
+      const wasCurrent = index === indexRef.current;
+      const next = q.filter((_, i) => i !== index);
+      setQueue(next);
       queueRef.current = next;
+
+      if (!next.length) {
+        setQueueIndex(-1);
+        indexRef.current = -1;
+        setStatus("idle");
+        setCurrentTime(0);
+        setDuration(0);
+        player.pause();
+        return;
+      }
       if (index < indexRef.current) {
         const ni = indexRef.current - 1;
         setQueueIndex(ni);
         indexRef.current = ni;
-      } else if (index === indexRef.current) {
+      } else if (wasCurrent) {
         const ni = Math.min(indexRef.current, next.length - 1);
         setQueueIndex(ni);
         indexRef.current = ni;
+        load(next[ni], isPlaying);
       }
-      return next;
-    });
-  }, []);
+    },
+    [isPlaying, load, player]
+  );
 
   const moveInQueue = useCallback((from: number, to: number) => {
-    setQueue((prev) => {
-      if (to < 0 || to >= prev.length || from === to) return prev;
-      const next = [...prev];
-      const [item] = next.splice(from, 1);
-      next.splice(to, 0, item);
-      queueRef.current = next;
-      const cur = indexRef.current;
-      let ni = cur;
-      if (cur === from) ni = to;
-      else if (from < cur && to >= cur) ni = cur - 1;
-      else if (from > cur && to <= cur) ni = cur + 1;
-      setQueueIndex(ni);
-      indexRef.current = ni;
-      return next;
-    });
+    const q = queueRef.current;
+    if (to < 0 || to >= q.length || from === to) return;
+    const next = [...q];
+    const [item] = next.splice(from, 1);
+    next.splice(to, 0, item);
+    setQueue(next);
+    queueRef.current = next;
+
+    const cur = indexRef.current;
+    let ni = cur;
+    if (cur === from) ni = to;
+    else if (from < cur && to >= cur) ni = cur - 1;
+    else if (from > cur && to <= cur) ni = cur + 1;
+    setQueueIndex(ni);
+    indexRef.current = ni;
   }, []);
 
   const clearQueue = useCallback(() => {
@@ -743,7 +656,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         const next = exists
           ? prev.filter((s) => s.youtubeId !== song.youtubeId)
           : [song, ...prev].slice(0, 200);
-        writeJSON(STORAGE_KEYS.favourites, next);
+        writeJSON(STORAGE.favourites, next);
         notify(exists ? "Removed from favourites" : "Added to favourites ❤️");
         return next;
       });
@@ -758,11 +671,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
   const resumeLast = useCallback(() => {
     if (!resumeTarget) return;
-    userInteractedRef.current = true;
     const song = resumeTarget.song;
-    const nextQueue = queueRef.current.some((s) => s.youtubeId === song.youtubeId)
-      ? queueRef.current
-      : [song, ...queueRef.current];
+    const q = queueRef.current;
+    const nextQueue = q.some((s) => s.youtubeId === song.youtubeId) ? q : [song, ...q];
     const index = nextQueue.findIndex((s) => s.youtubeId === song.youtubeId);
     setQueue(nextQueue);
     queueRef.current = nextQueue;
@@ -771,32 +682,48 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     load(song, true, resumeTarget.position);
   }, [load, resumeTarget]);
 
-  /* --------------------------- Keyboard shortcuts ----------------------- */
+  /* --------------------------- Keyboard shortcuts ------------------------ */
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
       if (target?.isContentEditable) return;
-      if (e.code === "Space") {
-        e.preventDefault();
-        togglePlay();
-      } else if (e.code === "ArrowRight" && e.shiftKey) {
-        e.preventDefault();
-        goNext(false);
-      } else if (e.code === "ArrowLeft" && e.shiftKey) {
-        e.preventDefault();
-        previous();
-      } else if (e.code === "KeyM") {
-        toggleMute();
-      } else if (e.code === "Escape") {
-        setFullPlayerOpen(false);
-        setQueuePanelOpen(false);
+
+      switch (e.code) {
+        case "Space":
+          e.preventDefault();
+          togglePlay();
+          break;
+        case "ArrowRight":
+          if (e.shiftKey) {
+            e.preventDefault();
+            advance(false);
+          }
+          break;
+        case "ArrowLeft":
+          if (e.shiftKey) {
+            e.preventDefault();
+            previous();
+          }
+          break;
+        case "KeyM":
+          toggleMute();
+          break;
+        case "Escape":
+          setFullPlayerOpen(false);
+          setQueuePanelOpen(false);
+          break;
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [goNext, previous, togglePlay, toggleMute]);
+  }, [advance, previous, togglePlay, toggleMute]);
+
+  /* -------------------------------- Value -------------------------------- */
+
+  const canGoNext = queue.length > 0 && (queueIndex < queue.length - 1 || prefs.repeat !== "off");
+  const canGoPrevious = queue.length > 0;
 
   const value = useMemo<PlayerContextValue>(
     () => ({
@@ -807,11 +734,13 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       isPlaying,
       currentTime,
       duration,
-      volume,
-      muted,
-      shuffle,
-      repeat,
+      volume: prefs.volume,
+      muted: prefs.muted,
+      shuffle: prefs.shuffle,
+      repeat: prefs.repeat,
       error,
+      canGoNext,
+      canGoPrevious,
       fullPlayerOpen,
       queuePanelOpen,
       recentlyPlayed,
@@ -820,10 +749,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       playSong,
       playQueue,
       togglePlay,
-      next: () => goNext(false),
+      next: () => advance(false),
       previous,
       seekTo,
-      seekRatio,
       setVolume,
       toggleMute,
       toggleShuffle,
@@ -841,7 +769,6 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       toggleQueuePanel: () => setQueuePanelOpen((v) => !v),
       setQueuePanelOpen,
       resumeLast,
-      registerHost,
       notify,
       toastMessage,
     }),
@@ -853,11 +780,10 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       isPlaying,
       currentTime,
       duration,
-      volume,
-      muted,
-      shuffle,
-      repeat,
+      prefs,
       error,
+      canGoNext,
+      canGoPrevious,
       fullPlayerOpen,
       queuePanelOpen,
       recentlyPlayed,
@@ -866,10 +792,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       playSong,
       playQueue,
       togglePlay,
-      goNext,
+      advance,
       previous,
       seekTo,
-      seekRatio,
       setVolume,
       toggleMute,
       toggleShuffle,
@@ -883,7 +808,6 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       toggleFavourite,
       isFavourite,
       resumeLast,
-      registerHost,
       notify,
       toastMessage,
     ]

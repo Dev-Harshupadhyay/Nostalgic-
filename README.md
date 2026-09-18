@@ -82,17 +82,43 @@ Search query → /api/youtube/search → YouTube (API key or public) → normali
 Two server-side strategies, in order:
 
 1. **Official YouTube Data API v3** — used automatically when `YOUTUBE_API_KEY` is set.
+   Calls `search.list` with `part=snippet`, `type=video`, `maxResults=20`, `regionCode=IN`,
+   `relevanceLanguage=hi` and `videoEmbeddable=true`, then `videos.list`
+   (`part=contentDetails,status`) to attach real runtimes and drop any video whose
+   `status.embeddable` is `false` — an unplayable row is worse than a missing one.
+   Supports real `nextPageToken` pagination.
 2. **Keyless public search** — parses YouTube's own results page server-side.
+   Has no cursor, so "Load more" pages by slicing deeper into the returned set, and only
+   advertises another page when more results genuinely remain.
 3. **Bundled catalog** — last-resort fallback, clearly reported as `source: "catalog"`.
 
+Thumbnails always come from YouTube itself (highest available of
+`maxres → standard → high → medium → default`, falling back to the canonical
+`i.ytimg.com/vi/<id>/hqdefault.jpg`). No artwork is ever synthesised, and HTML entities in
+titles/channels (`&amp;`, `&#39;`) are decoded before display.
+
 > The API key is read **only** on the server (`lib/youtube.server.ts` is `server-only`) and is
-> never prefixed with `NEXT_PUBLIC_`, so it can never reach the browser bundle.
+> never prefixed with `NEXT_PUBLIC_`, so it can never reach the browser bundle. The browser
+> only ever calls `/api/youtube/search?q=…` and receives normalized `Song[]` objects.
+
+### Search UX
+
+Debounced live search (420 ms) with request cancellation — a stale response can never
+overwrite a newer one (guarded by a monotonic run id *and* `AbortController`). Plus: search on
+Enter, a Search button, suggestion chips, loading skeletons, persisted search history
+(`nostalgic:searchHistory`), a clear button, lazy-loaded thumbnails, 30-minute server-side
+response caching, a "Load more" pager, and distinct no-results / error states. Previous
+results stay on screen while a new query is in flight.
+
+Playback is always via the **official YouTube IFrame Player API** — the selected `videoId` is
+handed to the existing single, persistent player instance. Nothing is downloaded, scraped for
+media URLs, or re-hosted.
 
 ### Endpoints
 
 | Route | Purpose |
 | --- | --- |
-| `GET /api/youtube/search?q=&max=&category=` | Global search |
+| `GET /api/youtube/search?q=&max=&pageToken=&category=` | Live YouTube search (paginated) |
 | `GET /api/youtube/discover?group=&category=` | Refresh one category with live results |
 
 ---

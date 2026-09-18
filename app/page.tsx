@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Hero from "@/components/home/Hero";
+import Introduction from "@/components/home/Introduction";
 import SongShelf from "@/components/music/SongShelf";
 import SupportCard from "@/components/support/SupportCard";
 import { RecentlyPlayed, ContinueListening } from "@/components/home/RecentlyPlayed";
@@ -56,6 +57,8 @@ export default function HomePage() {
             ))}
           </div>
         </section>
+
+        <Introduction />
 
         <ContinueListening />
         <RecentlyPlayed />

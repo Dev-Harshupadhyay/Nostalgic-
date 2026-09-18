@@ -1,14 +1,24 @@
 "use client";
 
 import { usePlayer } from "./PlayerProvider";
-import { Play, Pause, Prev, Next, Shuffle, Repeat, RepeatOne, Spinner } from "@/components/ui/Icons";
+import IconButton from "@/components/ui/IconButton";
+import {
+  Play,
+  Pause,
+  Prev,
+  Next,
+  Shuffle,
+  Repeat,
+  RepeatOne,
+  Spinner,
+} from "@/components/ui/Icons";
 
 type Props = { size?: "sm" | "md" | "lg"; showExtras?: boolean };
 
-const DIM = {
-  sm: { main: "h-10 w-10", icon: 18, side: 18 },
-  md: { main: "h-12 w-12", icon: 20, side: 20 },
-  lg: { main: "h-16 w-16", icon: 26, side: 24 },
+const MAIN = {
+  sm: { btn: "h-11 w-11", icon: 18 },
+  md: { btn: "h-14 w-14", icon: 22 },
+  lg: { btn: "h-[68px] w-[68px]", icon: 28 },
 };
 
 export default function PlayerControls({ size = "md", showExtras = false }: Props) {
@@ -23,78 +33,80 @@ export default function PlayerControls({ size = "md", showExtras = false }: Prop
     repeat,
     cycleRepeat,
     current,
+    canGoNext,
+    canGoPrevious,
   } = usePlayer();
-  const d = DIM[size];
+
+  const dim = MAIN[size];
   const loading = status === "loading" || status === "buffering";
-  const disabled = !current;
+  const idle = !current;
+
+  const repeatLabel =
+    repeat === "off" ? "Repeat: off" : repeat === "all" ? "Repeat: queue" : "Repeat: this song";
 
   return (
-    <div className="flex items-center justify-center gap-2 sm:gap-3">
+    <div className="flex items-center justify-center gap-2 sm:gap-4">
       {showExtras ? (
-        <button
-          type="button"
+        <IconButton
+          label="Shuffle"
+          tooltip={shuffle ? "Shuffle: on" : "Shuffle: off"}
+          active={shuffle}
           onClick={toggleShuffle}
-          aria-label="Shuffle"
-          aria-pressed={shuffle}
-          className={`grid h-10 w-10 place-items-center rounded-full transition ${
-            shuffle
-              ? "bg-[color:var(--color-amber)]/16 text-[color:var(--color-amber)]"
-              : "text-white/55 hover:text-white"
-          }`}
+          disabled={idle}
+          size="md"
         >
-          <Shuffle size={d.side} />
-        </button>
+          <Shuffle size={20} />
+        </IconButton>
       ) : null}
 
-      <button
-        type="button"
+      <IconButton
+        label="Previous song"
+        tooltip="Previous"
         onClick={previous}
-        disabled={disabled}
-        aria-label="Previous song"
-        className="grid h-10 w-10 place-items-center rounded-full text-white/80 transition hover:text-white active:scale-90 disabled:opacity-35"
+        disabled={idle || !canGoPrevious}
+        size="md"
       >
-        <Prev size={d.side} />
-      </button>
+        <Prev size={22} />
+      </IconButton>
 
       <button
         type="button"
         onClick={togglePlay}
-        disabled={disabled}
-        aria-label={isPlaying ? "Pause" : "Play"}
-        className={`btn btn-glow ${d.main} !p-0 disabled:opacity-40`}
+        disabled={idle}
+        aria-label={isPlaying ? "Pause song" : "Play song"}
+        data-tooltip={isPlaying ? "Pause" : "Play"}
+        className={`btn btn-glow play-btn ${dim.btn} !p-0 disabled:opacity-40`}
       >
         {loading ? (
-          <Spinner size={d.icon} />
+          <Spinner size={dim.icon} />
         ) : isPlaying ? (
-          <Pause size={d.icon} />
+          <Pause size={dim.icon} />
         ) : (
-          <Play size={d.icon} className="translate-x-[1px]" />
+          <Play size={dim.icon} className="translate-x-[1.5px]" />
         )}
       </button>
 
-      <button
-        type="button"
+      <IconButton
+        label="Next song"
+        tooltip="Next"
         onClick={next}
-        disabled={disabled}
-        aria-label="Next song"
-        className="grid h-10 w-10 place-items-center rounded-full text-white/80 transition hover:text-white active:scale-90 disabled:opacity-35"
+        disabled={idle || !canGoNext}
+        size="md"
       >
-        <Next size={d.side} />
-      </button>
+        <Next size={22} />
+      </IconButton>
 
       {showExtras ? (
-        <button
-          type="button"
+        <IconButton
+          label={repeatLabel}
+          tooltip={repeatLabel}
+          active={repeat !== "off"}
           onClick={cycleRepeat}
-          aria-label={`Repeat: ${repeat}`}
-          className={`grid h-10 w-10 place-items-center rounded-full transition ${
-            repeat !== "off"
-              ? "bg-[color:var(--color-amber)]/16 text-[color:var(--color-amber)]"
-              : "text-white/55 hover:text-white"
-          }`}
+          disabled={idle}
+          size="md"
         >
-          {repeat === "one" ? <RepeatOne size={d.side} /> : <Repeat size={d.side} />}
-        </button>
+          {repeat === "one" ? <RepeatOne size={20} /> : <Repeat size={20} />}
+        </IconButton>
       ) : null}
     </div>
   );

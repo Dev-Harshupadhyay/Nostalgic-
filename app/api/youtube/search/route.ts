@@ -5,16 +5,18 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * GET /api/youtube/search?q=...&max=24&category=Search
+ * GET /api/youtube/search?q=...&max=20&pageToken=...&category=Search
  *
  * The YouTube API key (if any) lives only in server env — it is never sent to
- * the browser. The client only ever receives normalized Song[] objects.
+ * the browser. The client only ever receives normalized Song[] objects, so the
+ * secret cannot leak through the response either.
  */
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const q = (searchParams.get("q") ?? "").slice(0, 120).trim();
-  const max = Math.min(Math.max(Number(searchParams.get("max") ?? 24) || 24, 1), 40);
+  const max = Math.min(Math.max(Number(searchParams.get("max") ?? 20) || 20, 1), 40);
   const category = (searchParams.get("category") ?? "Search").slice(0, 60);
+  const pageToken = (searchParams.get("pageToken") ?? "").slice(0, 200) || undefined;
 
   if (!q) {
     return NextResponse.json(
@@ -24,9 +26,13 @@ export async function GET(request: Request) {
   }
 
   try {
-    const { results, source, cached } = await searchYouTube(q, { max, category });
+    const { results, source, cached, nextPageToken } = await searchYouTube(q, {
+      max,
+      category,
+      pageToken,
+    });
     return NextResponse.json(
-      { results, query: q, source, cached },
+      { results, query: q, source, cached, nextPageToken },
       {
         headers: {
           "Cache-Control": "public, s-maxage=1800, stale-while-revalidate=3600",

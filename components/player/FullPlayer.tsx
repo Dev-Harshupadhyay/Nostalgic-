@@ -1,9 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { usePlayer } from "./PlayerProvider";
 import PlayerControls from "./PlayerControls";
 import ProgressBar from "./ProgressBar";
+import VinylArtwork from "./VinylArtwork";
+import IconButton from "@/components/ui/IconButton";
 import { cleanTitle } from "@/lib/format";
 import {
   ChevronDown,
@@ -14,6 +16,16 @@ import {
   VolumeMute,
   ExternalLink,
 } from "@/components/ui/Icons";
+
+const STATUS_TEXT: Record<string, string> = {
+  idle: "Nothing playing",
+  loading: "Loading next song… 🎧",
+  buffering: "Buffering…",
+  playing: "Now playing",
+  paused: "Paused",
+  ended: "Finished",
+  error: "Playback error",
+};
 
 export default function FullPlayer() {
   const {
@@ -33,221 +45,225 @@ export default function FullPlayer() {
     toggleFavourite,
     isFavourite,
     toggleQueuePanel,
-    registerHost,
+    queue,
+    queueIndex,
     notify,
   } = usePlayer();
 
-  const hostRef = useRef<HTMLDivElement>(null);
-  const [videoMode, setVideoMode] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const restoreFocusRef = useRef<HTMLElement | null>(null);
 
-  /* Claim the persistent YouTube iframe while the video view is open, then hand
-     it back to the mini player. The iframe itself is never re-created. */
+  /* Lock scroll, trap focus, restore focus on close. */
   useEffect(() => {
-    if (fullPlayerOpen && videoMode && hostRef.current) {
-      registerHost(hostRef.current);
-      return () => registerHost(null);
-    }
-    return;
-  }, [fullPlayerOpen, videoMode, registerHost]);
-
-  useEffect(() => {
-    if (!fullPlayerOpen) {
-      setVideoMode(false);
-      return;
-    }
-    const prev = document.body.style.overflow;
+    if (!fullPlayerOpen) return;
+    restoreFocusRef.current = document.activeElement as HTMLElement | null;
+    const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    closeRef.current?.focus();
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Tab") return;
+      const nodes = panelRef.current?.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), a[href], input, [tabindex]:not([tabindex="-1"])'
+      );
+      if (!nodes?.length) return;
+      const first = nodes[0];
+      const last = nodes[nodes.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", onKey);
     return () => {
-      document.body.style.overflow = prev;
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+      restoreFocusRef.current?.focus?.();
     };
   }, [fullPlayerOpen]);
 
   const share = useCallback(async () => {
     if (!current) return;
     const url = `https://www.youtube.com/watch?v=${current.youtubeId}`;
-    const data = { title: current.title, text: `${current.title} — ${current.artist}`, url };
     try {
       if (navigator.share) {
-        await navigator.share(data);
+        await navigator.share({
+          title: cleanTitle(current.title),
+          text: `${cleanTitle(current.title)} — ${current.artist}`,
+          url,
+        });
         return;
       }
       await navigator.clipboard.writeText(url);
       notify("Link copied to clipboard");
-    } catch {
+    } catch (err) {
+      if ((err as Error)?.name === "AbortError") return; // user dismissed the sheet
       notify("Could not share this song");
     }
   }, [current, notify]);
 
   if (!fullPlayerOpen || !current) return null;
+
   const fav = isFavourite(current);
+  const loading = status === "loading";
+  const statusText = STATUS_TEXT[status] ?? "";
+  const upNext = queue[queueIndex + 1];
 
   return (
     <div
       className="fixed inset-0 z-[80] flex flex-col"
       role="dialog"
       aria-modal="true"
-      aria-label={`Now playing: ${current.title}`}
+      aria-label={`Now playing: ${cleanTitle(current.title)}`}
+      ref={panelRef}
     >
       {/* Ambient backdrop derived from the artwork */}
-      <div aria-hidden className="absolute inset-0 -z-10 overflow-hidden bg-[#0b0708]">
+      <div aria-hidden className="absolute inset-0 -z-10 overflow-hidden bg-[#0a0606]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={current.thumbnail}
           alt=""
-          className="h-full w-full scale-150 object-cover opacity-35 blur-3xl"
+          className="h-full w-full scale-150 object-cover opacity-30 blur-3xl"
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/75 to-black/95" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/78 to-black/96" />
       </div>
 
-      <header className="flex shrink-0 items-center justify-between gap-3 px-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-6">
-        <button
-          type="button"
+      {/* Header */}
+      <header className="flex shrink-0 items-center justify-between gap-3 px-4 pt-[max(0.9rem,env(safe-area-inset-top))] sm:px-7">
+        <IconButton
+          label="Close full player"
+          tooltip="Back"
           onClick={closeFullPlayer}
-          aria-label="Close full player"
-          className="grid h-10 w-10 place-items-center rounded-full bg-white/8 text-white/85 backdrop-blur transition hover:bg-white/14"
+          size="md"
+          className="bg-white/8 hover:bg-white/14"
         >
-          <ChevronDown size={20} />
-        </button>
+          <ChevronDown size={22} />
+        </IconButton>
+
         <div className="min-w-0 text-center">
-          <p className="eyebrow">Now playing</p>
-          <p className="line-1 text-[0.72rem] text-white/50">{current.category}</p>
+          <p className="eyebrow" aria-live="polite">
+            {statusText}
+          </p>
+          <p className="line-1 text-[0.72rem] text-white/45">{current.category}</p>
         </div>
-        <button
-          type="button"
+
+        <IconButton
+          label="Open queue"
+          tooltip="Queue"
           onClick={toggleQueuePanel}
-          aria-label="Open queue"
-          className="grid h-10 w-10 place-items-center rounded-full bg-white/8 text-white/85 backdrop-blur transition hover:bg-white/14"
+          size="md"
+          className="bg-white/8 hover:bg-white/14"
         >
-          <QueueIcon size={19} />
-        </button>
+          <QueueIcon size={20} />
+        </IconButton>
       </header>
 
-      <div className="scroll-y flex flex-1 flex-col items-center justify-center gap-6 px-5 py-5 sm:px-8">
-        {/* Artwork / video */}
-        <div className="relative mb-2 w-full max-w-[min(72vw,320px)] sm:max-w-[360px]">
-          <div
-            aria-hidden
-            className={`absolute -inset-6 -z-10 rounded-full bg-[radial-gradient(circle,rgba(232,163,61,0.45),transparent_68%)] blur-2xl ${
-              isPlaying ? "halo" : "opacity-40"
-            }`}
-          />
-          <div
-            className={`relative aspect-square w-full overflow-hidden rounded-[26px] border border-white/12 shadow-[0_40px_90px_-30px_rgba(0,0,0,0.95)] ${
-              isPlaying && !videoMode ? "art-pulse" : ""
-            }`}
-          >
-            <div
-              ref={hostRef}
-              className={`absolute inset-0 ${videoMode ? "opacity-100" : "pointer-events-none opacity-0"}`}
-            />
-            {!videoMode ? (
-              <>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={`https://i.ytimg.com/vi/${current.youtubeId}/maxresdefault.jpg`}
-                  alt={`${current.title} artwork`}
-                  className="h-full w-full object-cover"
-                  onError={(e) => {
-                    e.currentTarget.src = current.thumbnail;
-                  }}
-                />
-                <span
-                  aria-hidden
-                  className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,rgba(255,255,255,0.18),transparent_38%)]"
-                />
-              </>
-            ) : null}
-            {status === "loading" ? (
-              <div className="absolute inset-0 skeleton" aria-hidden />
-            ) : null}
-          </div>
+      {/* Body */}
+      <div className="scroll-y flex flex-1 flex-col items-center justify-center gap-6 px-5 py-4 sm:gap-7 sm:px-8">
+        <VinylArtwork song={current} playing={isPlaying} loading={loading} size="full" />
 
-          <button
-            type="button"
-            onClick={() => setVideoMode((v) => !v)}
-            className="absolute -bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-white/14 bg-[#100a09]/95 px-4 py-1.5 text-[0.7rem] font-semibold text-white/85 shadow-[0_8px_22px_-8px_rgba(0,0,0,0.9)] backdrop-blur transition hover:border-[color:var(--color-amber)]/60 hover:text-white"
-            aria-pressed={videoMode}
-          >
-            {videoMode ? "Show artwork" : "Show video"}
-          </button>
-        </div>
-
-        {/* Meta */}
+        {/* Metadata */}
         <div className="w-full max-w-xl text-center">
-          <h1 className="line-2 text-lg font-bold leading-snug text-white sm:text-2xl">
+          <h1
+            key={current.youtubeId}
+            className="fade-up line-2 text-lg font-bold leading-snug text-white sm:text-2xl"
+          >
             {cleanTitle(current.title)}
           </h1>
-          <p className="mt-1 text-sm text-white/55">{current.artist}</p>
+          <p className="mt-1.5 text-sm text-white/58 sm:text-base">{current.artist}</p>
+
+          <div className="mt-2.5 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[0.7rem] text-white/40">
+            <span className="rounded-full bg-white/7 px-2.5 py-0.5">• {current.category}</span>
+            {current.language ? (
+              <span className="rounded-full bg-white/7 px-2.5 py-0.5">{current.language}</span>
+            ) : null}
+            {current.year ? (
+              <span className="rounded-full bg-white/7 px-2.5 py-0.5">{current.year}</span>
+            ) : null}
+            <span className="rounded-full bg-white/7 px-2.5 py-0.5">YouTube</span>
+          </div>
+
           {error ? (
-            <p role="alert" className="mt-2 text-xs text-[color:var(--color-rose)]">
+            <p role="alert" className="mt-3 text-xs text-[color:var(--color-rose)]">
               {error}
             </p>
           ) : null}
         </div>
 
-        {/* Progress */}
+        {/* Timeline */}
         <div className="w-full max-w-xl">
-          <ProgressBar currentTime={currentTime} duration={duration} onSeek={seekTo} />
+          <ProgressBar currentTime={currentTime} duration={duration} onSeek={seekTo} size="lg" />
         </div>
 
-        {/* Controls */}
+        {/* Main transport */}
         <PlayerControls size="lg" showExtras />
 
         {/* Secondary row */}
-        <div className="flex w-full max-w-xl flex-wrap items-center justify-center gap-4 sm:justify-between">
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
+        <div className="flex w-full max-w-xl flex-col items-center gap-4 sm:flex-row sm:justify-between">
+          <div className="flex items-center gap-1.5">
+            <IconButton
+              label={fav ? "Remove from favourites" : "Add to favourites"}
+              tooltip="Favourite"
               onClick={() => toggleFavourite(current)}
-              aria-label={fav ? "Remove from favourites" : "Add to favourites"}
+              active={fav}
+              tone={fav ? "rose" : "default"}
               aria-pressed={fav}
-              className={`grid h-10 w-10 place-items-center rounded-full transition ${
-                fav
-                  ? "bg-[color:var(--color-rose)]/16 text-[color:var(--color-rose)]"
-                  : "text-white/60 hover:bg-white/8 hover:text-white"
-              }`}
             >
-              <Heart size={19} filled={fav} />
-            </button>
-            <button
-              type="button"
-              onClick={share}
-              aria-label="Share this song"
-              className="grid h-10 w-10 place-items-center rounded-full text-white/60 transition hover:bg-white/8 hover:text-white"
-            >
-              <Share size={18} />
-            </button>
+              <Heart size={20} filled={fav} />
+            </IconButton>
+
+            <IconButton label="Share this song" tooltip="Share" onClick={share}>
+              <Share size={19} />
+            </IconButton>
+
             <a
               href={`https://www.youtube.com/watch?v=${current.youtubeId}`}
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Open this song on YouTube"
-              className="grid h-10 w-10 place-items-center rounded-full text-white/60 transition hover:bg-white/8 hover:text-white"
+              data-tooltip="Open on YouTube"
+              className="icon-btn tap-target h-11 w-11 text-white/65 hover:text-white"
             >
-              <ExternalLink size={17} />
+              <ExternalLink size={18} />
             </a>
+
+            <IconButton label="Open queue" tooltip="Queue" onClick={toggleQueuePanel}>
+              <QueueIcon size={19} />
+            </IconButton>
           </div>
 
           <div className="flex items-center gap-2.5">
-            <button
-              type="button"
+            <IconButton
+              label={muted || volume === 0 ? "Unmute" : "Mute"}
+              tooltip="Mute"
               onClick={toggleMute}
-              aria-label={muted ? "Unmute" : "Mute"}
-              className="grid h-10 w-10 place-items-center rounded-full text-white/60 transition hover:bg-white/8 hover:text-white"
             >
-              {muted || volume === 0 ? <VolumeMute size={19} /> : <Volume size={19} />}
-            </button>
+              {muted || volume === 0 ? <VolumeMute size={20} /> : <Volume size={20} />}
+            </IconButton>
             <input
               type="range"
-              className="vol w-28 sm:w-36"
+              className="vol w-32 sm:w-40"
               min={0}
               max={100}
+              step={1}
               value={muted ? 0 : volume}
               onChange={(e) => setVolume(Number(e.target.value))}
               aria-label="Volume"
+              aria-valuetext={`${muted ? 0 : volume} percent`}
             />
           </div>
         </div>
+
+        {upNext ? (
+          <p className="line-1 max-w-xl text-center text-[0.7rem] text-white/32">
+            Up next · {cleanTitle(upNext.title).slice(0, 52)}
+          </p>
+        ) : null}
       </div>
     </div>
   );

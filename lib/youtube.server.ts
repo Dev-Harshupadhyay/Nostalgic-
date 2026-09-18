@@ -20,7 +20,12 @@ const UA =
 
 export type SearchSource = "youtube-api" | "youtube-public" | "catalog";
 
-type CacheEntry = { at: number; results: Song[]; source: SearchSource };
+type CacheEntry = {
+  at: number;
+  results: Song[];
+  source: SearchSource;
+  nextPageToken?: string;
+};
 const CACHE_TTL = 1000 * 60 * 30;
 const cache = new Map<string, CacheEntry>();
 
@@ -34,9 +39,14 @@ function cacheGet(key: string): CacheEntry | null {
   return hit;
 }
 
-function cacheSet(key: string, results: Song[], source: SearchSource) {
+function cacheSet(
+  key: string,
+  results: Song[],
+  source: SearchSource,
+  nextPageToken?: string
+) {
   if (cache.size > 120) cache.delete(cache.keys().next().value as string);
-  cache.set(key, { at: Date.now(), results, source });
+  cache.set(key, { at: Date.now(), results, source, nextPageToken });
 }
 
 function thumbFor(id: string) {
@@ -55,7 +65,14 @@ function isoToClock(iso?: string): string | undefined {
 }
 
 function normalize(
-  raw: { youtubeId: string; title: string; artist: string; duration?: string; year?: string },
+  raw: {
+    youtubeId: string;
+    title: string;
+    artist: string;
+    duration?: string;
+    year?: string;
+    thumbnail?: string;
+  },
   category: string,
   language?: string
 ): Song {
@@ -64,7 +81,9 @@ function normalize(
     youtubeId: raw.youtubeId,
     title: raw.title,
     artist: raw.artist,
-    thumbnail: thumbFor(raw.youtubeId),
+    // Prefer the thumbnail YouTube itself returned; fall back to the canonical
+    // i.ytimg.com path for the same video. Never synthesised artwork.
+    thumbnail: raw.thumbnail || thumbFor(raw.youtubeId),
     duration: raw.duration,
     category,
     language,
@@ -79,62 +98,107 @@ async function searchViaApi(
   query: string,
   max: number,
   category: string,
-  signal?: AbortSignal
-): Promise<Song[] | null> {
+  signal?: AbortSignal,
+  pageToken?: string
+): Promise<{ results: Song[]; nextPageToken?: string } | null> {
   const key = process.env.YOUTUBE_API_KEY;
   if (!key) return null;
+
   const url = new URL("https://www.googleapis.com/youtube/v3/search");
   url.searchParams.set("part", "snippet");
   url.searchParams.set("type", "video");
-  url.searchParams.set("videoCategoryId", "10");
-  url.searchParams.set("videoEmbeddable", "true");
-  url.searchParams.set("maxResults", String(Math.min(max, 25)));
   url.searchParams.set("q", query);
+  url.searchParams.set("maxResults", String(Math.min(max, 25)));
   url.searchParams.set("regionCode", "IN");
+  url.searchParams.set("relevanceLanguage", "hi");
+  // Only surface videos we are actually allowed to embed in the IFrame player.
+  url.searchParams.set("videoEmbeddable", "true");
+  url.searchParams.set("videoCategoryId", "10");
   url.searchParams.set("key", key);
+  if (pageToken) url.searchParams.set("pageToken", pageToken);
 
   const res = await fetch(url, { signal, next: { revalidate: 1800 } });
   if (!res.ok) throw new Error(`youtube-api ${res.status}`);
   const data = (await res.json()) as {
-    items?: { id?: { videoId?: string }; snippet?: Record<string, string> }[];
+    nextPageToken?: string;
+    items?: {
+      id?: { videoId?: string };
+      snippet?: {
+        title?: string;
+        channelTitle?: string;
+        publishedAt?: string;
+        thumbnails?: Record<string, { url?: string; width?: number }>;
+      };
+    }[];
   };
+
   const items = (data.items ?? []).filter((i) => i.id?.videoId);
   const ids = items.map((i) => i.id!.videoId!).join(",");
 
+  /* contentDetails gives us the real runtime; status.embeddable is a second
+     guard because the search filter alone occasionally lets a blocked video
+     through, and an unplayable row is worse than a missing one. */
   const durations = new Map<string, string>();
+  const blocked = new Set<string>();
   if (ids) {
     try {
       const dUrl = new URL("https://www.googleapis.com/youtube/v3/videos");
-      dUrl.searchParams.set("part", "contentDetails");
+      dUrl.searchParams.set("part", "contentDetails,status");
       dUrl.searchParams.set("id", ids);
       dUrl.searchParams.set("key", key);
       const dRes = await fetch(dUrl, { signal, next: { revalidate: 1800 } });
       if (dRes.ok) {
         const dData = (await dRes.json()) as {
-          items?: { id: string; contentDetails?: { duration?: string } }[];
+          items?: {
+            id: string;
+            contentDetails?: { duration?: string };
+            status?: { embeddable?: boolean };
+          }[];
         };
         for (const it of dData.items ?? []) {
           const clock = isoToClock(it.contentDetails?.duration);
           if (clock) durations.set(it.id, clock);
+          if (it.status?.embeddable === false) blocked.add(it.id);
         }
       }
     } catch {
-      /* durations are optional */
+      /* durations are optional — never fail the search over them */
     }
   }
 
-  return items.map((i) =>
-    normalize(
-      {
-        youtubeId: i.id!.videoId!,
-        title: i.snippet?.title ?? "",
-        artist: i.snippet?.channelTitle ?? "",
-        duration: durations.get(i.id!.videoId!),
-        year: i.snippet?.publishedAt?.slice(0, 4),
-      },
-      category
-    )
-  );
+  const results = items
+    .filter((i) => !blocked.has(i.id!.videoId!))
+    .map((i) => {
+      const t = i.snippet?.thumbnails ?? {};
+      const best =
+        t.maxres?.url ?? t.standard?.url ?? t.high?.url ?? t.medium?.url ?? t.default?.url;
+      return normalize(
+        {
+          youtubeId: i.id!.videoId!,
+          title: decodeEntities(i.snippet?.title ?? ""),
+          artist: decodeEntities(i.snippet?.channelTitle ?? ""),
+          duration: durations.get(i.id!.videoId!),
+          year: i.snippet?.publishedAt?.slice(0, 4),
+          thumbnail: best,
+        },
+        category
+      );
+    });
+
+  return { results, nextPageToken: data.nextPageToken };
+}
+
+/** YouTube's API returns HTML entities in titles (&amp;, &#39;, &quot;). */
+function decodeEntities(input: string): string {
+  return input
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#0?39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&#(\d+);/g, (_, d: string) => String.fromCodePoint(Number(d)));
 }
 
 /* --------------------- Keyless public results parsing -------------------- */
@@ -182,7 +246,12 @@ function collectVideos(node: unknown, out: RawResult[], seen: Set<string>) {
     // Skip live streams / shelf placeholders that report no length.
     if (title && duration) {
       seen.add(v.videoId);
-      out.push({ youtubeId: v.videoId, title, artist, duration });
+      out.push({
+        youtubeId: v.videoId,
+        title: decodeEntities(title),
+        artist: decodeEntities(artist),
+        duration,
+      });
     }
   }
   for (const key of Object.keys(obj)) collectVideos(obj[key], out, seen);
@@ -192,8 +261,9 @@ async function searchViaPublic(
   query: string,
   max: number,
   category: string,
-  signal?: AbortSignal
-): Promise<Song[]> {
+  signal?: AbortSignal,
+  offset = 0
+): Promise<{ results: Song[]; total: number }> {
   const url = `https://www.youtube.com/results?search_query=${encodeURIComponent(
     query
   )}&sp=EgIQAQ%253D%253D`; // sp = filter: type video
@@ -214,45 +284,83 @@ async function searchViaPublic(
   if (!data) throw new Error("youtube-public: unparsable response");
   const raw: RawResult[] = [];
   collectVideos(data, raw, new Set());
-  return raw.slice(0, max).map((r) => normalize(r, category));
+  // The public page has no cursor, so "load more" is served by slicing deeper
+  // into the single result set it returns. `total` lets the caller decide
+  // whether another page actually exists instead of guessing.
+  return {
+    results: raw.slice(offset, offset + max).map((r) => normalize(r, category)),
+    total: raw.length,
+  };
 }
 
 /* ------------------------------ Public API ------------------------------ */
 
 export async function searchYouTube(
   query: string,
-  opts: { max?: number; category?: string; signal?: AbortSignal } = {}
-): Promise<{ results: Song[]; source: SearchSource; cached: boolean }> {
+  opts: {
+    max?: number;
+    category?: string;
+    signal?: AbortSignal;
+    /** Data-API cursor, or the string offset used by the keyless fallback. */
+    pageToken?: string;
+  } = {}
+): Promise<{
+  results: Song[];
+  source: SearchSource;
+  cached: boolean;
+  nextPageToken?: string;
+}> {
   const max = opts.max ?? 24;
   const category = opts.category ?? "Search";
   const trimmed = query.trim();
+  const pageToken = opts.pageToken;
   if (!trimmed) return { results: [], source: "catalog", cached: false };
 
-  const cacheKey = `${trimmed.toLowerCase()}::${max}::${category}`;
+  const cacheKey = `${trimmed.toLowerCase()}::${max}::${category}::${pageToken ?? "p0"}`;
   const hit = cacheGet(cacheKey);
-  if (hit) return { results: hit.results, source: hit.source, cached: true };
+  if (hit) {
+    return {
+      results: hit.results,
+      source: hit.source,
+      cached: true,
+      nextPageToken: hit.nextPageToken,
+    };
+  }
 
   try {
-    const viaApi = await searchViaApi(trimmed, max, category, opts.signal);
-    if (viaApi && viaApi.length) {
-      cacheSet(cacheKey, viaApi, "youtube-api");
-      return { results: viaApi, source: "youtube-api", cached: false };
+    const viaApi = await searchViaApi(trimmed, max, category, opts.signal, pageToken);
+    if (viaApi && viaApi.results.length) {
+      cacheSet(cacheKey, viaApi.results, "youtube-api", viaApi.nextPageToken);
+      return {
+        results: viaApi.results,
+        source: "youtube-api",
+        cached: false,
+        nextPageToken: viaApi.nextPageToken,
+      };
     }
   } catch (err) {
     console.error("[youtube] data-api failed:", (err as Error).message);
   }
 
   try {
-    const viaPublic = await searchViaPublic(trimmed, max, category, opts.signal);
-    if (viaPublic.length) {
-      cacheSet(cacheKey, viaPublic, "youtube-public");
-      return { results: viaPublic, source: "youtube-public", cached: false };
+    const offset = pageToken ? Number(pageToken) || 0 : 0;
+    const viaPublic = await searchViaPublic(trimmed, max, category, opts.signal, offset);
+    if (viaPublic.results.length) {
+      // Only advertise another page when more raw results really remain.
+      const next = offset + max < viaPublic.total ? String(offset + max) : undefined;
+      cacheSet(cacheKey, viaPublic.results, "youtube-public", next);
+      return {
+        results: viaPublic.results,
+        source: "youtube-public",
+        cached: false,
+        nextPageToken: next,
+      };
     }
   } catch (err) {
     console.error("[youtube] public search failed:", (err as Error).message);
   }
 
   // Last resort: the bundled catalog (still real YouTube data, just not live).
-  const local = searchCatalog(trimmed, max);
+  const local = pageToken ? [] : searchCatalog(trimmed, max);
   return { results: local, source: "catalog", cached: false };
 }

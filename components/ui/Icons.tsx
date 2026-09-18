@@ -207,3 +207,16 @@ export const Spinner = ({ size = 20, className = "", ...p }: P) => (
     />
   </svg>
 );
+
+export const Check = (p: P) => (
+  <Svg {...p}>
+    <path d="M20 6 9 17l-5-5" />
+  </Svg>
+);
+
+export const Clock = (p: P) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 7.5V12l3 1.8" />
+  </Svg>
+);
