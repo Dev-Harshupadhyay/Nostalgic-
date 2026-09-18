@@ -1,87 +1,83 @@
-# Deploy karne ka tareeka (Vercel)
+# Deploy
 
-Ye ek baar ka setup hai. Iske baad har `git push` par Vercel khud deploy karega.
+**Live site: https://nostalgic-xwa6.onrender.com**
+Host: **Render** (free tier). Har `main` push par apne aap deploy ho jata hai.
 
-## 1. Repo import karo
+---
 
-1. https://vercel.com/new khol
-2. GitHub se login karo (wahi account jisme `Dev-Harshupadhyay` hai)
-3. Agar repo list mein na dikhe → **Adjust GitHub App Permissions** → `Nostalgic-` ko access do
-4. `Nostalgic-` ke saamne **Import** dabao
+## Render (current host)
 
-## 2. Settings (sab default chhod do)
-
-Vercel khud detect kar lega:
+### Settings
 
 | Setting | Value |
 |---|---|
-| Framework Preset | Next.js |
-| Build Command | `next build` (default) |
-| Output Directory | (default, khaali) |
-| Install Command | `npm install` (default) |
-| Node Version | 20.x |
+| Environment | Node |
+| Build Command | `npm install && npm run build` |
+| Start Command | `npm start` |
+| Branch | `main` |
+| Node Version | 20 |
 
-Kuch bhi manually change karne ki zaroorat nahi.
+### Environment Variables
 
-## 3. Environment Variables
-
-Import screen par hi **Environment Variables** section mein ye daalo:
-
-| Name | Value | Environments |
+| Name | Value | Zaroori? |
 |---|---|---|
-| `NEXT_PUBLIC_SITE_URL` | `https://<tumhara-project>.vercel.app` | Production, Preview, Development |
+| `NEXT_PUBLIC_SITE_URL` | `https://nostalgic-xwa6.onrender.com` | SEO/share preview ke liye |
+| `YOUTUBE_API_KEY` | (YouTube Data API v3 key) | **Optional** — abhi zaroorat nahi |
 
-- Pehli baar URL pata nahi hoga — koi baat nahi. Deploy hone do, Vercel jo URL de wo copy karke
-  **Settings → Environment Variables** mein daal do, phir **Deployments → ... → Redeploy**.
-- Ye sirf SEO metadata, sitemap aur Open Graph image ke liye hai. Galat hone par site chalegi,
-  bas share karne par preview card ka link galat aayega.
+`YOUTUBE_API_KEY` ke aage `NEXT_PUBLIC_` **kabhi mat lagana** — wo key browser mein leak kar dega.
 
-**`YOUTUBE_API_KEY` optional hai.** Nahi daaloge toh app keyless search use karegi (abhi bhi wahi chal rahi hai).
-Daalna ho toh:
+**Note:** keyless search Render ke datacenter IPs se theek chal raha hai (verified: 20 results,
+`source: youtube-public`). Agar kabhi aage YouTube block kare aur results khaali aayein, tab
+`YOUTUBE_API_KEY` add kar dena — `lib/youtube.server.ts` khud official API tier pe switch ho jayega.
 
-| Name | Value |
-|---|---|
-| `YOUTUBE_API_KEY` | (YouTube Data API v3 key) |
+### Free tier ki ek baat
 
-⚠️ Iske aage `NEXT_PUBLIC_` **kabhi mat lagana** — wo key browser mein leak kar dega.
-
-## 4. Deploy
-
-**Deploy** dabao. ~2 minute mein live.
+15 minute tak koi visitor na aaye toh app **so jaata hai**. Uske baad pehli request ~50 second
+leti hai, phir normal. Kisi ko demo dena ho toh ek minute pehle site khol ke jaga lena.
 
 ---
 
-## Autodeploy ab kaise chalega
+## ⚠️ Vercel pe kyun nahi chala (yaad rakhne ke liye)
 
-Import hone ke baad:
+Vercel pe project import kiya tha, deploy ban bhi rahe the — par `Initializing` / `Queued` pe hi
+atke rehte the, kabhi build nahi hote the. Dashboard mein error ye tha:
 
-- `main` branch pe push → **Production** deploy
-- kisi aur branch / PR pe push → **Preview** deploy (alag URL)
+```
+⚠️ GitHub user not found
+   Commit Author   dev.harshupadhyay@users.noreply.github.com
+   GitHub User     Harsh Dev
+   Vercel Account  Unavailable
+```
 
-Manually trigger karna ho toh: Vercel dashboard → Deployments → `...` → **Redeploy**.
+**Wajah:** Vercel **Hobby (free) plan** pe commit author ka email Vercel account se match hona
+chahiye. Match na ho toh build silently block ho jaata hai — na error mail, na dashboard pe saaf
+message. Kuch commits `noreply` email se the, isliye sab ruk gaye. Blocked deployments queue mein
+jam bhi gaye the (Hobby pe ek waqt mein sirf 1 build chalta hai).
+
+**Isiliye** ab commits `harsh48227@gmail.com` se hote hain. Kabhi Vercel pe wapas jaana ho toh:
+
+```bash
+git config user.email "harsh48227@gmail.com"
+```
+
+Render mein ye restriction hai hi nahi — koi bhi author ho, deploy ho jaata hai.
 
 ---
 
-## Deploy ke baad ye check karna
+## Deploy ke baad check karne layak
 
-1. **Search aur Live Song tab** — sabse important. Vercel ke server datacenter IPs se chalte hain,
-   aur YouTube in IPs pe keyless scraping ko kabhi-kabhi rate-limit ya block kar deta hai.
-   Agar results khaali aayein ya "Music service is temporarily unavailable" dikhe, toh ye hi wajah hai.
-   **Fix:** `YOUTUBE_API_KEY` add kar do — code khud official API tier pe switch ho jaata hai
-   (`lib/youtube.server.ts` mein 3-tier fallback already hai).
-   Local pe ye problem nahi aati, isliye sirf production pe hi pata chalegi.
-
-2. **Playback** — asli phone pe ek gaana chala ke dekho. Lock screen pe play/pause/next aane chahiye.
-
-3. **Welcome dialog** — pehli baar naam poochhega. Dobara test karna ho toh browser ka
-   site data clear karo, ya console mein:
+1. `/live` tab — koi gaana search karke dekho, turant bajna chahiye
+2. Welcome dialog — pehli baar naam poochhta hai
+   Dobara test karna ho toh console mein:
    ```js
    Object.keys(localStorage).filter(k => k.startsWith("nostalgic:")).forEach(k => localStorage.removeItem(k))
    ```
+3. Support section — mobile pe UPI deep link khulta hai, desktop pe QR popup
+4. Asli phone pe ek gaana chala ke lock screen ke play/pause/next check karna
 
 ---
 
-## Custom domain (optional)
+## Custom domain
 
-Settings → Domains → domain add karo → DNS records jo Vercel bataye wo apne registrar pe daal do.
-Uske baad `NEXT_PUBLIC_SITE_URL` bhi naye domain pe update kar dena.
+Render dashboard → Settings → Custom Domains → domain add karo → jo DNS records Render bataye
+wo registrar pe daal do. Uske baad `NEXT_PUBLIC_SITE_URL` bhi naye domain pe update kar dena.

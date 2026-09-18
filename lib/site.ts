@@ -6,7 +6,7 @@ export const SITE = {
   title: "Nostalgic Music Player — Old Songs, Trending, Chhath & Bhojpuri",
   description:
     "Nostalgic Music Player by Harsh Dev — listen to old Hindi classics, new and trending tracks, Chhath Puja geet and Bhojpuri favourites, streamed through YouTube.",
-  url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://nostalgic-music.vercel.app",
+  url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://nostalgic-xwa6.onrender.com",
   locale: "en_IN",
 };
 
