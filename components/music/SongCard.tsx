@@ -4,7 +4,7 @@ import { memo, useCallback } from "react";
 import { usePlayer } from "@/components/player/PlayerProvider";
 import { shortTitle } from "@/lib/format";
 import type { Song } from "@/lib/types";
-import { Play, Pause, Plus } from "@/components/ui/Icons";
+import { Play, Pause, Plus, Heart } from "@/components/ui/Icons";
 
 type Props = {
   song: Song;
@@ -14,7 +14,9 @@ type Props = {
 };
 
 function SongCardBase({ song, contextQueue, priority = false, compact = false }: Props) {
-  const { playSong, addToQueue, current, isPlaying, togglePlay } = usePlayer();
+  const { playSong, addToQueue, current, isPlaying, togglePlay, toggleFavourite, isFavourite } =
+    usePlayer();
+  const faved = isFavourite(song);
   const active = current?.youtubeId === song.youtubeId;
   const playingThis = active && isPlaying;
 
@@ -29,6 +31,14 @@ function SongCardBase({ song, contextQueue, priority = false, compact = false }:
       addToQueue(song);
     },
     [addToQueue, song]
+  );
+
+  const onFav = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      toggleFavourite(song);
+    },
+    [toggleFavourite, song]
   );
 
   return (
@@ -69,6 +79,22 @@ function SongCardBase({ song, contextQueue, priority = false, compact = false }:
             aria-hidden
             className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/75 via-black/5 to-transparent"
           />
+          <button
+            type="button"
+            onClick={onFav}
+            aria-pressed={faved}
+            aria-label={
+              faved
+                ? `Remove ${shortTitle(song.title, 30)} from favourites`
+                : `Add ${shortTitle(song.title, 30)} to favourites`
+            }
+            className={`fav-btn absolute left-2 top-2 grid h-8 w-8 place-items-center rounded-full ${
+              faved ? "is-fav" : ""
+            }`}
+          >
+            <Heart size={15} filled={faved} />
+          </button>
+
           {song.duration ? (
             <span className="absolute right-2 top-2 rounded-md bg-black/70 px-1.5 py-0.5 text-[0.65rem] font-semibold tabular-nums text-white/90 backdrop-blur">
               {song.duration}

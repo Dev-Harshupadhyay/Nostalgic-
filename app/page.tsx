@@ -9,6 +9,7 @@ import { ChevronRight } from "@/components/ui/Icons";
 
 const FEATURED = [
   { href: "/evergreen", title: "Evergreen", sub: "2000s solid hits", emoji: "✨" },
+  { href: "/favourites", title: "Favourites", sub: "Your playlist", emoji: "❤️" },
   { href: "/old-songs", title: "Old Songs", sub: "Memories", emoji: "🎵" },
   { href: "/singles", title: "Singles", sub: "One song, one mood", emoji: "💿" },
   { href: "/trending", title: "New & Trending", sub: "What's new", emoji: "🔥" },

@@ -9,6 +9,7 @@ import { DEV } from "@/lib/site";
 export const TABS = [
   { href: "/", label: "Home", emoji: "🏠", hint: "Overview & featured" },
   { href: "/evergreen", label: "Evergreen", emoji: "✨", hint: "2000s solid hits" },
+  { href: "/favourites", label: "Favourites", emoji: "❤️", hint: "Your saved playlist" },
   { href: "/old-songs", label: "Old Songs", emoji: "🎵", hint: "Memories" },
   { href: "/singles", label: "Singles", emoji: "💿", hint: "One song, one mood" },
   { href: "/trending", label: "New & Trending", emoji: "🔥", hint: "What's new" },
@@ -20,10 +21,12 @@ export const TABS = [
 
 function Hamburger({ open }: { open: boolean }) {
   return (
-    <span className={`hamburger ${open ? "is-open" : ""}`} aria-hidden>
-      <span />
-      <span />
-      <span />
+    <span className={`burger ${open ? "is-open" : ""}`} aria-hidden>
+      <span className="burger-bars">
+        <span />
+        <span />
+        <span />
+      </span>
     </span>
   );
 }
@@ -109,7 +112,7 @@ export default function Header() {
             aria-expanded={menuOpen}
             aria-controls="main-drawer"
             data-tooltip="Menu"
-            className="icon-btn tap-target h-10 w-10 shrink-0 text-white/80 hover:text-white"
+            className="burger-btn tap-target shrink-0"
           >
             <Hamburger open={menuOpen} />
           </button>

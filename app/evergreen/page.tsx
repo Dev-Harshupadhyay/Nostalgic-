@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import CategorySection from "@/components/music/CategorySection";
+import EvergreenSection from "@/components/evergreen/EvergreenSection";
 import SupportCard from "@/components/support/SupportCard";
 import EvergreenHero from "@/components/evergreen/EvergreenHero";
 import { songsByCategory, getGroup } from "@/lib/catalog";
@@ -33,7 +33,7 @@ export default function Page() {
       <EvergreenHero count={total} />
 
       <div className="pb-6">
-        <CategorySection group="evergreen" buckets={buckets} live={false} />
+        <EvergreenSection buckets={buckets} />
       </div>
 
       <div className="pb-4">
