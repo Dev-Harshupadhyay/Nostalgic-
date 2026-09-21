@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import ChhathIntro from "@/components/chhath/ChhathIntro";
 import ChhathSection from "@/components/chhath/ChhathSection";
+import ChhathCountdown from "@/components/chhath/ChhathCountdown";
+import ChhathGallery from "@/components/chhath/ChhathGallery";
 import SupportCard from "@/components/support/SupportCard";
 import { songsByCategory, getGroup } from "@/lib/catalog";
 
@@ -35,11 +37,17 @@ export default function Page() {
     <div className="eg-scope ch-scope mx-auto max-w-[1400px] px-4 sm:px-6">
       <ChhathIntro count={total} />
 
+      <div className="mt-6">
+        <ChhathCountdown />
+      </div>
+
       <div className="mt-12 pb-6">
         <ChhathSection buckets={buckets} />
       </div>
 
-      <div className="pb-4">
+      <ChhathGallery />
+
+      <div className="py-8">
         <SupportCard compact />
       </div>
     </div>

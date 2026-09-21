@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Search, Close, ExternalLink } from "@/components/ui/Icons";
 import { DEV } from "@/lib/site";
+import LanguageSwitch from "@/components/i18n/LanguageSwitch";
+import { useI18n } from "@/components/i18n/LocaleProvider";
 
 export const TABS = [
   { href: "/", label: "Home", emoji: "🏠", hint: "Overview & featured" },
@@ -32,7 +34,21 @@ function Hamburger({ open }: { open: boolean }) {
 }
 
 export default function Header() {
+  const { t } = useI18n();
   const pathname = usePathname();
+  const labelFor = (href: string) =>
+    ({
+      "/": t.nav.home,
+      "/evergreen": t.nav.evergreen,
+      "/favourites": t.nav.favourites,
+      "/old-songs": t.nav.oldSongs,
+      "/singles": t.nav.singles,
+      "/trending": t.nav.trending,
+      "/chhath": t.nav.chhath,
+      "/bhojpuri": t.nav.bhojpuri,
+      "/live": t.nav.live,
+      "/search": t.nav.search,
+    })[href];
   const navRef = useRef<HTMLDivElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -108,14 +124,16 @@ export default function Header() {
             ref={triggerRef}
             type="button"
             onClick={() => setMenuOpen((v) => !v)}
-            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            aria-label={menuOpen ? "Close menu" : t.nav.menu}
             aria-expanded={menuOpen}
             aria-controls="main-drawer"
-            data-tooltip="Menu"
+            data-tooltip={t.nav.menu}
             className="burger-btn tap-target shrink-0"
           >
             <Hamburger open={menuOpen} />
           </button>
+
+          <LanguageSwitch />
 
           <Link
             href="/"
@@ -156,7 +174,7 @@ export default function Header() {
                   <span aria-hidden className="text-[0.95em]">
                     {tab.emoji}
                   </span>
-                  <span>{tab.label}</span>
+                  <span>{labelFor(tab.href) ?? tab.label}</span>
                   {active ? <span className="tab-underline" aria-hidden /> : null}
                 </Link>
               );
@@ -198,7 +216,7 @@ export default function Header() {
                 className="tab-link !text-[0.8rem]"
               >
                 <span aria-hidden>{tab.emoji}</span>
-                <span>{tab.label}</span>
+                <span>{labelFor(tab.href) ?? tab.label}</span>
                 {active ? <span className="tab-underline" aria-hidden /> : null}
               </Link>
             );
@@ -259,7 +277,7 @@ export default function Header() {
                           {tab.emoji}
                         </span>
                         <span className="min-w-0 flex-1">
-                          <span className="block text-sm font-semibold">{tab.label}</span>
+                          <span className="block text-sm font-semibold">{labelFor(tab.href) ?? tab.label}</span>
                           <span className="block text-[0.68rem] text-white/40">{tab.hint}</span>
                         </span>
                       </Link>
@@ -279,7 +297,7 @@ export default function Header() {
                     <span aria-hidden className="text-lg">
                       ❤️
                     </span>
-                    <span className="text-sm font-semibold">Support Dev Harsh</span>
+                    <span className="text-sm font-semibold">{t.nav.support}</span>
                   </Link>
                 </li>
                 <li>
@@ -290,7 +308,7 @@ export default function Header() {
                     <span aria-hidden className="text-lg">
                       🛠️
                     </span>
-                    <span className="text-sm font-semibold">About Developer</span>
+                    <span className="text-sm font-semibold">{t.nav.developer}</span>
                   </Link>
                 </li>
                 <li>

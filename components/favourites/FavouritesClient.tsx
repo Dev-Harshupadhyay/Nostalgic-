@@ -7,6 +7,7 @@ import SongCard from "@/components/music/SongCard";
 import { usePlayer } from "@/components/player/PlayerProvider";
 import { shortTitle } from "@/lib/format";
 import { Play, Pause, Heart, Plus, Close } from "@/components/ui/Icons";
+import { useI18n } from "@/components/i18n/LocaleProvider";
 
 type View = "grid" | "list";
 
@@ -29,11 +30,12 @@ export default function FavouritesClient() {
     toggleFavourite,
   } = usePlayer();
 
+  const { t } = useI18n();
   const [view, setView] = useState<View>("grid");
 
   const totalLabel = useMemo(
-    () => `${favourites.length} ${favourites.length === 1 ? "song" : "songs"}`,
-    [favourites.length]
+    () => `${favourites.length} ${favourites.length === 1 ? t.common.song : t.common.songs}`,
+    [favourites.length, t]
   );
 
   const playAll = () => favourites.length && playQueue(favourites, 0);
@@ -58,11 +60,10 @@ export default function FavouritesClient() {
           <Heart size={40} />
         </div>
         <h2 className="eg-title mt-4 text-xl font-extrabold sm:text-2xl">
-          Abhi koi favourite nahi
+          {t.favourites.emptyTitle}
         </h2>
         <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-white/55">
-          Kisi bhi gaane ke poster par ❤️ dabao — wo yahan aapki apni playlist me save ho jaayega.
-          Sab kuch aapke phone me hi rehta hai, kahin bheja nahi jaata.
+{t.favourites.emptyText}
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-3">
           <Link href="/evergreen" className="btn btn-glow px-5 py-2.5 text-sm">
@@ -97,24 +98,23 @@ export default function FavouritesClient() {
         </div>
 
         <div className="relative min-w-0">
-          <p className="eyebrow">Your playlist · saved on this device</p>
+          <p className="eyebrow">{t.favourites.eyebrow}</p>
           <h1 className="eg-title mt-1.5 text-[1.9rem] font-extrabold tracking-tight sm:text-[2.6rem]">
-            Favourites
+            {t.favourites.title}
           </h1>
           <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/58">
-            Aapke dil ke {totalLabel}. Play dabao aur poori list ek ke baad ek apne aap chalti
-            rahegi.
+{t.favourites.lead.replace("{count}", totalLabel)}
           </p>
 
           <div className="mt-5 flex flex-wrap items-center gap-2.5">
             <GlowButton size="lg" aura onClick={playAll} aria-label="Play all favourites">
-              <Play size={16} /> Play all
+              <Play size={16} /> {t.common.playAll}
             </GlowButton>
             <button type="button" onClick={shuffleAll} className="btn btn-ghost px-4 py-2.5 text-sm">
-              🔀 Shuffle
+              🔀 {t.common.shuffle}
             </button>
             <button type="button" onClick={queueAll} className="btn btn-ghost px-4 py-2.5 text-sm">
-              <Plus size={14} /> Queue me daalo
+              <Plus size={14} /> {t.favourites.queueAll}
             </button>
             <span className="eg-chip">{totalLabel}</span>
           </div>
@@ -123,7 +123,7 @@ export default function FavouritesClient() {
 
       {/* ---------------------------- View switch ---------------------------- */}
       <div className="mt-8 flex items-center justify-between gap-3 px-1">
-        <h2 className="text-[1.05rem] font-bold tracking-tight">Saved songs</h2>
+        <h2 className="text-[1.05rem] font-bold tracking-tight">{t.favourites.saved}</h2>
         <div className="fav-switch" role="group" aria-label="Layout">
           <button
             type="button"
@@ -131,7 +131,7 @@ export default function FavouritesClient() {
             aria-pressed={view === "grid"}
             className={view === "grid" ? "is-on" : ""}
           >
-            Grid
+            {t.favourites.grid}
           </button>
           <button
             type="button"
@@ -139,7 +139,7 @@ export default function FavouritesClient() {
             aria-pressed={view === "list"}
             className={view === "list" ? "is-on" : ""}
           >
-            List
+            {t.favourites.list}
           </button>
         </div>
       </div>

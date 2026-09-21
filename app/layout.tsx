@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { LocaleProvider } from "@/components/i18n/LocaleProvider";
 import { PlayerProvider } from "@/components/player/PlayerProvider";
 import { UserProvider } from "@/components/user/UserProvider";
 import WelcomeGate from "@/components/user/WelcomeGate";
@@ -122,6 +123,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <div className="grain" aria-hidden />
         <div className="scanlines" aria-hidden />
 
+        <LocaleProvider>
         <PlayerProvider>
           <UserProvider>
           <div className="flex min-h-dvh flex-col">
@@ -140,6 +142,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <SupportPop />
           </UserProvider>
         </PlayerProvider>
+        </LocaleProvider>
 
         <Analytics />
         <SpeedInsights />
