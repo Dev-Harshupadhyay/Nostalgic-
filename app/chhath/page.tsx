@@ -3,6 +3,7 @@ import ChhathIntro from "@/components/chhath/ChhathIntro";
 import ChhathSection from "@/components/chhath/ChhathSection";
 import ChhathCountdown from "@/components/chhath/ChhathCountdown";
 import ChhathGallery from "@/components/chhath/ChhathGallery";
+import ChhathDetail from "@/components/chhath/ChhathDetail";
 import SupportCard from "@/components/support/SupportCard";
 import { songsByCategory, getGroup } from "@/lib/catalog";
 
@@ -44,6 +45,8 @@ export default function Page() {
       <div className="mt-12 pb-6">
         <ChhathSection buckets={buckets} />
       </div>
+
+      <ChhathDetail />
 
       <ChhathGallery />
 

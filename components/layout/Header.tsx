@@ -23,13 +23,16 @@ export const TABS = [
 
 function Hamburger({ open }: { open: boolean }) {
   return (
-    <span className={`burger ${open ? "is-open" : ""}`} aria-hidden>
-      <span className="burger-bars">
-        <span />
-        <span />
-        <span />
+    <>
+      <span className="burger-halo" aria-hidden />
+      <span className={`burger ${open ? "is-open" : ""}`} aria-hidden>
+        <span className="burger-bars">
+          <span />
+          <span />
+          <span />
+        </span>
       </span>
-    </span>
+    </>
   );
 }
 

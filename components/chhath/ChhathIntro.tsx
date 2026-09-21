@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import GlowButton from "@/components/ui/GlowButton";
 import { usePlayer } from "@/components/player/PlayerProvider";
 import { getGroup } from "@/lib/catalog";
-import { CHHATH_INTRO, CHHATH_FACTS } from "@/lib/chhath-notes";
+import { CHHATH_INTRO, CHHATH_FACTS, CHHATH_QUOTE, CHHATH_QUOTE_BY } from "@/lib/chhath-notes";
 import { Play } from "@/components/ui/Icons";
 import { useI18n } from "@/components/i18n/LocaleProvider";
 import { CHHATH_2026 } from "@/lib/chhath-2026";
@@ -34,6 +34,12 @@ function useReveal<T extends HTMLElement>() {
   return { ref, shown };
 }
 
+const LEAD2 = {
+  en: "From Kartik Shukla Chaturthi to Saptami — each day has its own rule, its own prasad, its own discipline.",
+  hi: "कार्तिक शुक्ल चतुर्थी से सप्तमी तक — हर दिन का अपना नियम, अपना प्रसाद, अपनी मर्यादा।",
+  bho: "कातिक सुकुल चउथ से सतमी तक — हर दिन के आपन नियम, आपन परसाद, आपन मरजाद।",
+};
+
 export default function ChhathIntro({ count }: { count: number }) {
   const { locale, t } = useI18n();
   const { playQueue } = usePlayer();
@@ -55,25 +61,25 @@ export default function ChhathIntro({ count }: { count: number }) {
         </h1>
 
         <p className="relative mt-3 max-w-2xl text-[0.95rem] font-semibold leading-relaxed text-white/80">
-          {CHHATH_INTRO.lead}
+          {CHHATH_INTRO.lead[locale]}
         </p>
 
         <p className="relative mt-3 max-w-3xl text-sm leading-[1.85] text-white/58">
-          {CHHATH_INTRO.body}
+          {CHHATH_INTRO.body[locale]}
         </p>
 
         <div className="ch-facts relative">
           {CHHATH_FACTS.map((f) => (
-            <div key={f.v} className="ch-fact">
+            <div key={f.k} className="ch-fact">
               <span className="ch-fact-k">{f.k}</span>
-              <span className="ch-fact-v">{f.v}</span>
+              <span className="ch-fact-v">{f.v[locale]}</span>
             </div>
           ))}
         </div>
 
         <div className="relative mt-6 flex flex-wrap items-center gap-3">
           <GlowButton size="lg" aura onClick={() => playQueue(songs, 0)} aria-label="Play all Chhath songs">
-            <Play size={16} /> Chhath geet chalao
+            <Play size={16} /> {t.common.playAll}
           </GlowButton>
           <span className="eg-chip">{count} {t.common.songs}</span>
         </div>
@@ -89,8 +95,7 @@ export default function ChhathIntro({ count }: { count: number }) {
           {t.chhath.fourDays}
         </h2>
         <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-white/52">
-          Kartik Shukla Chaturthi se Saptami tak — har din ka apna niyam, apna prasad, apni
-          maryada.
+          {LEAD2[locale]}
         </p>
 
         <ol className="ch-day-list">
@@ -123,11 +128,8 @@ export default function ChhathIntro({ count }: { count: number }) {
         </ol>
 
         <blockquote className="ch-quote">
-          <p>
-            “Chhath me na koi bada hai na chhota. Sabhi ek hi ghat par, ek hi paani me, ek hi
-            sooraj ke saamne khade hote hain.”
-          </p>
-          <footer>— Bihar ki sabse sachi parampara</footer>
+          <p>{CHHATH_QUOTE[locale]}</p>
+          <footer>{CHHATH_QUOTE_BY[locale]}</footer>
         </blockquote>
       </section>
     </>

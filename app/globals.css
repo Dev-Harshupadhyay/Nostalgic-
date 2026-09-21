@@ -2019,7 +2019,10 @@ h1, h2, h3, h4 {
 }
 
 /* ============================================================================
-   HAMBURGER — glowing warm pill with an animated conic halo
+   HAMBURGER — glowing warm pill
+   The glow lives in a real child element (.burger-halo) rather than a
+   negative z-index pseudo, because the sticky header paints its own
+   background over anything sitting behind the button.
    ========================================================================== */
 @property --burger-angle {
   syntax: "<angle>";
@@ -2034,97 +2037,92 @@ h1, h2, h3, h4 {
   height: 2.6rem;
   width: 2.6rem;
   border-radius: 15px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 179, 71, 0.3);
   background:
-    radial-gradient(120% 120% at 30% 0%, rgba(232, 163, 61, 0.22), transparent 60%),
+    radial-gradient(130% 130% at 30% 0%, rgba(232, 163, 61, 0.3), transparent 62%),
     linear-gradient(160deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.02));
   color: #ffd9a3;
-  isolation: isolate;
   box-shadow:
-    0 6px 18px -10px rgba(0, 0, 0, 0.9),
-    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+    0 0 0 0 rgba(232, 163, 61, 0),
+    0 8px 22px -12px rgba(232, 163, 61, 0.7),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16);
   transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.25s ease,
     box-shadow 0.35s ease, border-color 0.3s ease;
+  animation: burger-breathe 3.2s ease-in-out infinite;
 }
 
-/* Soft amber bloom sitting behind the button. Always faintly on, blooms on hover. */
-.burger-btn::after {
-  content: "";
-  position: absolute;
-  inset: -8px;
-  z-index: -2;
-  border-radius: 22px;
-  background: radial-gradient(circle at 50% 50%, rgba(232, 163, 61, 0.55), transparent 68%);
-  filter: blur(10px);
-  opacity: 0.35;
-  transition: opacity 0.35s ease, transform 0.35s ease;
-  pointer-events: none;
+@keyframes burger-breathe {
+  0%, 100% { box-shadow: 0 0 14px -2px rgba(232,163,61,0.35), 0 8px 22px -12px rgba(232,163,61,0.7), inset 0 1px 0 rgba(255,255,255,0.16); }
+  50%      { box-shadow: 0 0 26px 2px rgba(232,163,61,0.6),  0 8px 26px -10px rgba(232,163,61,0.9), inset 0 1px 0 rgba(255,255,255,0.22); }
 }
 
-/* Rotating conic rim-light. */
-.burger-btn::before {
-  content: "";
+/* Rotating conic rim — a positive-z overlay ring, so nothing can hide it. */
+.burger-halo {
   position: absolute;
-  inset: -1.5px;
-  z-index: -1;
-  border-radius: inherit;
-  padding: 1.5px;
+  inset: -2px;
+  z-index: 1;
+  border-radius: 17px;
+  padding: 2px;
   background: conic-gradient(
     from var(--burger-angle),
-    rgba(232, 163, 61, 0.95),
-    rgba(212, 84, 106, 0.85),
-    rgba(79, 179, 165, 0.7),
-    rgba(232, 163, 61, 0.95)
+    #ffca7a,
+    #e8a33d 25%,
+    #d4546a 50%,
+    #4fb3a5 72%,
+    #ffca7a
   );
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
   mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   mask-composite: exclude;
-  opacity: 0.55;
-  animation: burger-spin 4.5s linear infinite;
-  transition: opacity 0.3s ease;
+  opacity: 0.75;
+  filter: drop-shadow(0 0 6px rgba(232, 163, 61, 0.9));
+  animation: burger-spin 3.8s linear infinite;
+  transition: opacity 0.3s ease, filter 0.3s ease;
   pointer-events: none;
 }
 
-@keyframes burger-spin {
-  to { --burger-angle: 360deg; }
-}
+@keyframes burger-spin { to { --burger-angle: 360deg; } }
 
 .burger-btn:hover,
 .burger-btn:focus-visible {
   color: #fff;
   transform: translateY(-1.5px);
-  border-color: rgba(232, 163, 61, 0.45);
+  border-color: rgba(232, 163, 61, 0.7);
+  animation-play-state: paused;
   box-shadow:
-    0 14px 34px -14px rgba(232, 163, 61, 0.95),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    0 0 34px 4px rgba(232, 163, 61, 0.7),
+    0 14px 34px -14px rgba(232, 163, 61, 1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24);
 }
-.burger-btn:hover::before,
-.burger-btn:focus-visible::before { opacity: 1; }
-.burger-btn:hover::after {
-  opacity: 0.85;
-  transform: scale(1.12);
+.burger-btn:hover .burger-halo,
+.burger-btn:focus-visible .burger-halo {
+  opacity: 1;
+  filter: drop-shadow(0 0 11px rgba(232, 163, 61, 1));
 }
 .burger-btn:active { transform: translateY(0) scale(0.94); }
 
 .burger-btn[aria-expanded="true"] {
   color: #fff;
-  border-color: rgba(232, 163, 61, 0.55);
+  border-color: rgba(232, 163, 61, 0.8);
   background:
-    radial-gradient(120% 120% at 30% 0%, rgba(232, 163, 61, 0.4), transparent 62%),
-    linear-gradient(160deg, rgba(212, 84, 106, 0.22), rgba(255, 255, 255, 0.03));
+    radial-gradient(130% 130% at 30% 0%, rgba(232, 163, 61, 0.45), transparent 62%),
+    linear-gradient(160deg, rgba(212, 84, 106, 0.28), rgba(255, 255, 255, 0.04));
 }
-.burger-btn[aria-expanded="true"]::before { opacity: 1; }
-.burger-btn[aria-expanded="true"]::after { opacity: 0.95; }
+.burger-btn[aria-expanded="true"] .burger-halo { opacity: 1; }
 
 /* ---- Bars ---- */
-.burger { display: block; }
+.burger {
+  position: relative;
+  z-index: 2;
+  display: block;
+}
 .burger-bars {
   position: relative;
   display: block;
   width: 18px;
   height: 13px;
-  filter: drop-shadow(0 0 6px rgba(232, 163, 61, 0.55));
+  filter: drop-shadow(0 0 7px rgba(255, 200, 120, 0.85));
 }
 .burger-bars > span {
   position: absolute;
@@ -2143,24 +2141,20 @@ h1, h2, h3, h4 {
 .burger-bars > span:nth-child(2) { top: 5.5px; width: 62%; }
 .burger-bars > span:nth-child(3) { top: 11px; width: 82%; }
 
+.burger-btn:hover .burger-bars > span:nth-child(1) { width: 70%; }
 .burger-btn:hover .burger-bars > span:nth-child(2) { width: 100%; }
 .burger-btn:hover .burger-bars > span:nth-child(3) { width: 100%; }
-.burger-btn:hover .burger-bars > span:nth-child(1) { width: 70%; }
 
 .burger.is-open .burger-bars > span:nth-child(1) {
-  top: 5.5px;
-  width: 100%;
-  transform: rotate(45deg);
+  top: 5.5px; width: 100%; transform: rotate(45deg);
 }
 .burger.is-open .burger-bars > span:nth-child(2) { opacity: 0; width: 0; transform: scaleX(0); }
 .burger.is-open .burger-bars > span:nth-child(3) {
-  top: 5.5px;
-  width: 100%;
-  transform: rotate(-45deg);
+  top: 5.5px; width: 100%; transform: rotate(-45deg);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .burger-btn::before { animation: none; }
+  .burger-halo, .burger-btn { animation: none; }
 }
 
 /* ============================================================================
@@ -2815,4 +2809,268 @@ h1, h2, h3, h4 {
 @media (prefers-reduced-motion: reduce) {
   .ch-count-rays, .ch-count-spark > span, .ch-count.is-live, .ch-count-live-day,
   .ch-unit { animation: none; }
+}
+
+/* ============================================================================
+   ANIMATED GHAT SCENE (inline SVG)
+   ========================================================================== */
+.ghat {
+  position: relative;
+  overflow: hidden;
+  border-radius: 20px;
+  aspect-ratio: 1000 / 560;
+  background: #0b1724;
+}
+.ghat svg { display: block; height: 100%; width: 100%; }
+
+/* ---- The sun actually travels ---- */
+.ghat .ghat-sun { transform: translateY(330px); }
+.ghat.is-set .ghat-sun { animation: sun-set 16s ease-in-out infinite alternate; }
+.ghat.is-rise .ghat-sun { animation: sun-rise 16s ease-in-out infinite alternate; }
+
+@keyframes sun-set {
+  from { transform: translateY(250px); }
+  to   { transform: translateY(362px); }
+}
+@keyframes sun-rise {
+  from { transform: translateY(372px); }
+  to   { transform: translateY(262px); }
+}
+
+.ghat-sun-glow { animation: sun-breathe 5s ease-in-out infinite; transform-origin: 500px 0; }
+@keyframes sun-breathe {
+  0%, 100% { opacity: 0.8; transform: scale(1); }
+  50%      { opacity: 1;   transform: scale(1.09); }
+}
+.ghat-rays { transform-origin: 500px 0; animation: ray-turn 70s linear infinite; }
+@keyframes ray-turn { to { transform: rotate(360deg); } }
+
+.ghat-clouds { animation: cloud-drift 46s linear infinite; }
+@keyframes cloud-drift {
+  from { transform: translateX(-60px); }
+  to   { transform: translateX(60px); }
+}
+
+/* ---- Water: ripple lines drift sideways at different speeds ---- */
+.ghat-rip { animation: rip-flow 9s linear infinite; }
+.ghat-rip.r1 { animation-duration: 13s; animation-direction: reverse; }
+.ghat-rip.r2 { animation-duration: 17s; }
+@keyframes rip-flow {
+  from { transform: translateX(0); }
+  to   { transform: translateX(160px); }
+}
+
+.ghat-col {
+  transform-origin: 500px 560px;
+  animation: col-shimmer 6s ease-in-out infinite;
+}
+@keyframes col-shimmer {
+  0%, 100% { opacity: 0.55; transform: scaleX(1); }
+  50%      { opacity: 0.95; transform: scaleX(1.18); }
+}
+
+/* ---- Diyas bob on the water, flames flicker ---- */
+.ghat-diya { animation: diya-bob 4.5s ease-in-out infinite; }
+.ghat-diya.d1 { animation-duration: 5.6s; animation-delay: -1.2s; }
+.ghat-diya.d2 { animation-duration: 6.4s; animation-delay: -2.6s; }
+.ghat-diya.d3 { animation-duration: 5.1s; animation-delay: -3.7s; }
+@keyframes diya-bob {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50%      { transform: translateY(-4px) rotate(1.5deg); }
+}
+.ghat-flame {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: flame-flicker 1.5s ease-in-out infinite;
+}
+.ghat-diya.d1 .ghat-flame { animation-duration: 1.1s; }
+.ghat-diya.d2 .ghat-flame { animation-duration: 1.9s; }
+.ghat-diya.d3 .ghat-flame { animation-duration: 1.35s; }
+@keyframes flame-flicker {
+  0%, 100% { transform: scale(1, 1); opacity: 0.95; }
+  40%      { transform: scale(0.86, 1.15); opacity: 1; }
+  70%      { transform: scale(1.1, 0.92); opacity: 0.85; }
+}
+
+/* ---- Vratis sway gently, standing in the current ---- */
+.ghat-person { transform-box: fill-box; transform-origin: 50% 100%; animation: sway 7s ease-in-out infinite; }
+.ghat-person.p1 { animation-duration: 8.4s; animation-delay: -1.8s; }
+.ghat-person.p2 { animation-duration: 6.6s; animation-delay: -3.1s; }
+.ghat-person.p3 { animation-duration: 9.1s; animation-delay: -4.4s; }
+@keyframes sway {
+  0%, 100% { transform: rotate(-0.9deg); }
+  50%      { transform: rotate(0.9deg); }
+}
+
+.ghat-garland { animation: garland-sway 5s ease-in-out infinite; transform-origin: 878px 272px; }
+@keyframes garland-sway {
+  0%, 100% { transform: rotate(-1.2deg); }
+  50%      { transform: rotate(1.2deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ghat *, .ghat .ghat-sun { animation: none !important; }
+  .ghat .ghat-sun { transform: translateY(320px); }
+}
+
+/* ============================================================================
+   CHHATH — long-form detail sections
+   ========================================================================== */
+.ch-about { margin-top: 3.5rem; }
+
+.ch-prose { margin-top: 1.1rem; max-width: 74ch; }
+.ch-prose p {
+  font-size: 0.88rem;
+  line-height: 1.95;
+  color: rgba(255, 255, 255, 0.58);
+}
+.ch-prose p + p { margin-top: 1rem; }
+.ch-prose p.is-lead {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.8);
+  border-left: 2px solid rgba(255, 179, 71, 0.6);
+  padding-left: 1rem;
+}
+
+/* ---- Animated scene pair ---- */
+.ch-scenes {
+  margin-top: 2.5rem;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+}
+.ch-scene {
+  overflow: hidden;
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(255, 255, 255, 0.02);
+  box-shadow: 0 22px 60px -30px rgba(0, 0, 0, 0.95);
+  transition: border-color 0.3s ease, box-shadow 0.35s ease;
+}
+.ch-scene:hover {
+  border-color: rgba(255, 179, 71, 0.4);
+  box-shadow: 0 26px 60px -26px rgba(255, 179, 71, 0.5);
+}
+.ch-scene .ghat { border-radius: 0; }
+.ch-scene figcaption {
+  padding: 0.8rem 1rem 0.9rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: rgba(255, 179, 71, 0.9);
+}
+
+/* ---- Samagri ---- */
+.ch-sam { margin-top: 3.5rem; }
+.ch-sam-grid {
+  margin-top: 1.3rem;
+  display: grid;
+  gap: 0.7rem;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+}
+.ch-sam-card {
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(165deg, rgba(255, 179, 71, 0.06), rgba(255, 255, 255, 0.02));
+  padding: 1rem 1.05rem;
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.3s ease;
+}
+.ch-sam-card:hover { transform: translateY(-3px); border-color: rgba(255, 179, 71, 0.35); }
+.ch-sam-card h3 {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--color-amber, #e8a33d);
+}
+.ch-sam-card p {
+  margin-top: 0.4rem;
+  font-size: 0.78rem;
+  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* ---- Katha ---- */
+.ch-katha { margin-top: 3.5rem; }
+.ch-katha-grid {
+  margin-top: 1.3rem;
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: repeat(auto-fit, minmax(265px, 1fr));
+}
+.ch-katha-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.028);
+  padding: 1.2rem 1.15rem 1.15rem;
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.3s ease;
+}
+.ch-katha-card:hover { transform: translateY(-3px); border-color: rgba(212, 84, 106, 0.4); }
+.ch-katha-n {
+  position: absolute;
+  right: 0.7rem;
+  top: 0.2rem;
+  font-size: 2.6rem;
+  font-weight: 900;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.05);
+}
+.ch-katha-card h3 {
+  font-size: 1rem;
+  font-weight: 800;
+  color: rgba(255, 220, 160, 0.95);
+}
+.ch-katha-card p {
+  margin-top: 0.45rem;
+  font-size: 0.79rem;
+  line-height: 1.75;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* ---- Niyam ---- */
+.ch-niyam { margin-top: 3.5rem; }
+.ch-niyam-grid {
+  margin-top: 1.3rem;
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+}
+.ch-niyam-col {
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 1.15rem 1.2rem;
+}
+.ch-niyam-col.is-do {
+  background: linear-gradient(165deg, rgba(79, 179, 165, 0.09), rgba(255, 255, 255, 0.015));
+  border-color: rgba(79, 179, 165, 0.25);
+}
+.ch-niyam-col.is-dont {
+  background: linear-gradient(165deg, rgba(212, 84, 106, 0.09), rgba(255, 255, 255, 0.015));
+  border-color: rgba(212, 84, 106, 0.25);
+}
+.ch-niyam-col h3 {
+  font-size: 0.88rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+.ch-niyam-col.is-do h3 { color: #6fd3c2; }
+.ch-niyam-col.is-dont h3 { color: #ee8098; }
+.ch-niyam-col ul { margin-top: 0.75rem; display: grid; gap: 0.55rem; }
+.ch-niyam-col li {
+  position: relative;
+  padding-left: 0.95rem;
+  font-size: 0.79rem;
+  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.58);
+}
+.ch-niyam-col li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.62em;
+  height: 5px;
+  width: 5px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.45;
 }

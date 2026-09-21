@@ -3,11 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import SongShelf from "@/components/music/SongShelf";
 import { CHHATH_NOTES } from "@/lib/chhath-notes";
+import { useI18n } from "@/components/i18n/LocaleProvider";
 import type { Song } from "@/lib/types";
 
 type Bucket = { category: string; songs: Song[] };
 
 function Block({ bucket }: { bucket: Bucket }) {
+  const { locale, t } = useI18n();
   const note = CHHATH_NOTES[bucket.category];
   const ref = useRef<HTMLDivElement>(null);
   const [shown, setShown] = useState(false);
@@ -39,10 +41,10 @@ function Block({ bucket }: { bucket: Bucket }) {
           <div className="eg-note-head">
             <span className="eg-note-era">{bucket.category}</span>
             <span className="eg-note-line" aria-hidden />
-            <span className="eg-note-count">{bucket.songs.length} songs</span>
+            <span className="eg-note-count">{bucket.songs.length} {t.common.songs}</span>
           </div>
-          <h3 className="eg-note-tag">{note.tagline}</h3>
-          <p className="eg-note-story">{note.story}</p>
+          <h3 className="eg-note-tag">{note.tagline[locale]}</h3>
+          <p className="eg-note-story">{note.story[locale]}</p>
         </div>
       ) : null}
 
@@ -51,7 +53,7 @@ function Block({ bucket }: { bucket: Bucket }) {
           title={bucket.category}
           songs={bucket.songs}
           showPlayAll
-          subtitle={note ? undefined : `${bucket.songs.length} songs in this collection`}
+          subtitle={note ? undefined : `${bucket.songs.length} ${t.common.songs}`}
         />
       </div>
     </section>
