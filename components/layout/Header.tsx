@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Search, Close, ExternalLink } from "@/components/ui/Icons";
+import { Search, Close, ExternalLink, ChevronRight } from "@/components/ui/Icons";
 import { DEV } from "@/lib/site";
 import LanguageSwitch from "@/components/i18n/LanguageSwitch";
 import { useI18n } from "@/components/i18n/LocaleProvider";
@@ -51,6 +51,19 @@ export default function Header() {
       "/bhojpuri": t.nav.bhojpuri,
       "/live": t.nav.live,
       "/search": t.nav.search,
+    })[href];
+  const hintFor = (href: string) =>
+    ({
+      "/": t.hint.home,
+      "/evergreen": t.hint.evergreen,
+      "/favourites": t.hint.favourites,
+      "/old-songs": t.hint.oldSongs,
+      "/singles": t.hint.singles,
+      "/trending": t.hint.trending,
+      "/chhath": t.hint.chhath,
+      "/bhojpuri": t.hint.bhojpuri,
+      "/live": t.hint.live,
+      "/search": t.hint.search,
     })[href];
   const navRef = useRef<HTMLDivElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
@@ -242,46 +255,56 @@ export default function Header() {
             role="dialog"
             aria-modal="true"
             aria-label="Site menu"
-            className="glass drawer-in absolute inset-y-0 left-0 flex w-[min(86vw,340px)] flex-col"
+            className="drawer drawer-in absolute inset-y-0 left-0 flex w-[min(86vw,340px)] flex-col"
           >
-            <div className="flex items-center justify-between gap-3 border-b border-white/8 px-4 py-3.5">
-              <div>
-                <p className="text-sm font-extrabold">
-                  <span className="warm-text">Nostalgic</span> Music Player
+            <div aria-hidden className="drawer-aura" />
+
+            <div className="drawer-head">
+              <span className="drawer-logo" aria-hidden>
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M9 18.2V6.8l10-2v10.1a3 3 0 1 1-1.6-2.66V7.1l-6.8 1.36v9.74A3 3 0 1 1 9 15.54v2.66z" />
+                </svg>
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[0.92rem] font-extrabold leading-tight">
+                  <span className="warm-text">Nostalgic</span>
                 </p>
-                <p className="text-[0.66rem] text-white/42">Your memories, one song at a time.</p>
+                <p className="mt-0.5 text-[0.66rem] leading-snug text-white/42">{t.nav.tagline}</p>
               </div>
               <button
                 type="button"
                 onClick={() => setMenuOpen(false)}
-                aria-label="Close menu"
-                className="icon-btn tap-target h-9 w-9 text-white/70 hover:text-white"
+                aria-label={t.common.close}
+                className="drawer-x"
               >
-                <Close size={18} />
+                <Close size={17} />
               </button>
             </div>
 
-            <nav className="scroll-y flex-1 px-2 py-3" aria-label="Menu navigation">
+            <nav className="scroll-y flex-1 px-2.5 py-3" aria-label="Menu navigation">
               <ul className="space-y-1">
-                {TABS.map((tab) => {
+                {TABS.map((tab, i) => {
                   const active = isActive(tab.href);
                   return (
-                    <li key={tab.href}>
+                    <li
+                      key={tab.href}
+                      className="drawer-item-in"
+                      style={{ animationDelay: `${Math.min(i, 10) * 34}ms` }}
+                    >
                       <Link
                         href={tab.href}
                         aria-current={active ? "page" : undefined}
-                        className={`flex items-center gap-3 rounded-xl px-3 py-2.5 transition ${
-                          active
-                            ? "bg-[color:var(--color-amber)]/14 text-white"
-                            : "text-white/72 hover:bg-white/6 hover:text-white"
-                        }`}
+                        className={`drawer-item ${active ? "is-active" : ""}`}
                       >
-                        <span aria-hidden className="text-lg">
+                        <span aria-hidden className="drawer-ico">
                           {tab.emoji}
                         </span>
                         <span className="min-w-0 flex-1">
-                          <span className="block text-sm font-semibold">{labelFor(tab.href) ?? tab.label}</span>
-                          <span className="block text-[0.68rem] text-white/40">{tab.hint}</span>
+                          <span className="drawer-label">{labelFor(tab.href) ?? tab.label}</span>
+                          <span className="drawer-hint">{hintFor(tab.href) ?? tab.hint}</span>
+                        </span>
+                        <span aria-hidden className="drawer-chev">
+                          <ChevronRight size={14} />
                         </span>
                       </Link>
                     </li>
@@ -289,29 +312,29 @@ export default function Header() {
                 })}
               </ul>
 
-              <hr className="my-3 border-white/8" />
+              <div className="drawer-sep" />
 
               <ul className="space-y-1">
                 <li>
                   <Link
                     href="/support"
-                    className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-white/72 transition hover:bg-white/6 hover:text-white"
+                    className="drawer-item is-sub"
                   >
-                    <span aria-hidden className="text-lg">
+                    <span aria-hidden className="drawer-ico">
                       ❤️
                     </span>
-                    <span className="text-sm font-semibold">{t.nav.support}</span>
+                    <span className="drawer-label flex-1">{t.nav.support}</span>
                   </Link>
                 </li>
                 <li>
                   <Link
                     href="/developer"
-                    className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-white/72 transition hover:bg-white/6 hover:text-white"
+                    className="drawer-item is-sub"
                   >
-                    <span aria-hidden className="text-lg">
+                    <span aria-hidden className="drawer-ico">
                       🛠️
                     </span>
-                    <span className="text-sm font-semibold">{t.nav.developer}</span>
+                    <span className="drawer-label flex-1">{t.nav.developer}</span>
                   </Link>
                 </li>
                 <li>
@@ -319,12 +342,12 @@ export default function Header() {
                     href={DEV.portfolio}
                     target="_blank"
                     rel="noopener noreferrer external"
-                    className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-white/72 transition hover:bg-white/6 hover:text-white"
+                    className="drawer-item is-sub"
                   >
-                    <span aria-hidden className="text-lg">
+                    <span aria-hidden className="drawer-ico">
                       🌐
                     </span>
-                    <span className="flex-1 text-sm font-semibold">Portfolio</span>
+                    <span className="drawer-label flex-1">Portfolio</span>
                     <ExternalLink size={14} className="text-white/35" />
                   </a>
                 </li>
@@ -333,19 +356,19 @@ export default function Header() {
                     href={DEV.timepass}
                     target="_blank"
                     rel="noopener noreferrer external"
-                    className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-white/72 transition hover:bg-white/6 hover:text-white"
+                    className="drawer-item is-sub"
                   >
-                    <span aria-hidden className="text-lg">
+                    <span aria-hidden className="drawer-ico">
                       🎬
                     </span>
-                    <span className="flex-1 text-sm font-semibold">Timepass Premium</span>
+                    <span className="drawer-label flex-1">Timepass Premium</span>
                     <ExternalLink size={14} className="text-white/35" />
                   </a>
                 </li>
               </ul>
             </nav>
 
-            <div className="border-t border-white/8 px-4 py-3">
+            <div className="drawer-foot">
               <p className="text-[0.68rem] text-white/38">
                 Made with <span className="text-[color:var(--color-rose)]">❤️</span> by{" "}
                 <a

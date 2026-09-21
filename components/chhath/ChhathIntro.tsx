@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import DayModal from "./DayModal";
 import GlowButton from "@/components/ui/GlowButton";
 import { usePlayer } from "@/components/player/PlayerProvider";
 import { getGroup } from "@/lib/catalog";
@@ -34,6 +35,12 @@ function useReveal<T extends HTMLElement>() {
   return { ref, shown };
 }
 
+const READ_MORE = {
+  en: "Read the full day",
+  hi: "पूरा दिन पढ़ें",
+  bho: "पूरा दिन पढ़ीं",
+};
+
 const LEAD2 = {
   en: "From Kartik Shukla Chaturthi to Saptami — each day has its own rule, its own prasad, its own discipline.",
   hi: "कार्तिक शुक्ल चतुर्थी से सप्तमी तक — हर दिन का अपना नियम, अपना प्रसाद, अपनी मर्यादा।",
@@ -45,6 +52,7 @@ export default function ChhathIntro({ count }: { count: number }) {
   const { playQueue } = usePlayer();
   const songs = getGroup("chhathPuja");
   const ritual = useReveal<HTMLDivElement>();
+  const [openDay, setOpenDay] = useState<number | null>(null);
 
   return (
     <>
@@ -102,13 +110,19 @@ export default function ChhathIntro({ count }: { count: number }) {
           {CHHATH_2026.map((d, i) => (
             <li
               key={d.key}
-              className="ch-day stagger-in"
+              className="stagger-in"
               style={{ animationDelay: `${i * 90}ms` }}
             >
+              <button
+                type="button"
+                onClick={() => setOpenDay(i)}
+                className="ch-day is-clickable"
+                aria-label={`${d.name[locale]} — full detail`}
+              >
               <span className="ch-day-n" aria-hidden>
                 {d.n}
               </span>
-              <div className="min-w-0">
+              <div className="min-w-0 text-left">
                 <p className="ch-day-label">
                   {new Date(`${d.date}T00:00:00+05:30`).toLocaleDateString("en-IN", {
                     weekday: "short",
@@ -122,7 +136,11 @@ export default function ChhathIntro({ count }: { count: number }) {
                 {d.time ? <p className="ch-day-time">🕉 {d.time}</p> : null}
                 <p className="ch-day-text">{d.what[locale]}</p>
                 <p className="ch-day-tithi">{d.tithi}</p>
+                <span className="ch-day-more" aria-hidden>
+                  {READ_MORE[locale]} →
+                </span>
               </div>
+              </button>
             </li>
           ))}
         </ol>
@@ -132,6 +150,8 @@ export default function ChhathIntro({ count }: { count: number }) {
           <footer>{CHHATH_QUOTE_BY[locale]}</footer>
         </blockquote>
       </section>
+
+      <DayModal index={openDay} onClose={() => setOpenDay(null)} onNavigate={setOpenDay} />
     </>
   );
 }

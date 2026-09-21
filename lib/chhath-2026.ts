@@ -13,6 +13,9 @@
 export type ChhathDay = {
   key: string;
   n: number;
+  emoji: string;
+  /** Illustration shown on the day's detail page. */
+  image: string;
   /** ISO date, Indian Standard Time. */
   date: string;
   weekday: string;
@@ -25,6 +28,8 @@ export type ChhathDay = {
 export const CHHATH_2026: ChhathDay[] = [
   {
     key: "nahay-khay",
+    emoji: "🛁",
+    image: "/chhath/g5.jpg",
     n: 1,
     date: "2026-11-13",
     weekday: "Friday",
@@ -38,6 +43,8 @@ export const CHHATH_2026: ChhathDay[] = [
   },
   {
     key: "kharna",
+    emoji: "🍚",
+    image: "/chhath/g4.jpg",
     n: 2,
     date: "2026-11-14",
     weekday: "Saturday",
@@ -51,6 +58,8 @@ export const CHHATH_2026: ChhathDay[] = [
   },
   {
     key: "sandhya-argh",
+    emoji: "🌇",
+    image: "/chhath/g1.jpg",
     n: 3,
     date: "2026-11-15",
     weekday: "Sunday",
@@ -65,6 +74,8 @@ export const CHHATH_2026: ChhathDay[] = [
   },
   {
     key: "usha-argh",
+    emoji: "🌄",
+    image: "/chhath/g3.jpg",
     n: 4,
     date: "2026-11-16",
     weekday: "Monday",
