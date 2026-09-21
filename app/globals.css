@@ -1675,3 +1675,36 @@ h1, h2, h3, h4 {
 @media (prefers-reduced-motion: reduce) {
   .eg-aurora, .eg-title, .eg-pop-coin { animation: none; }
 }
+
+/* ---- Support popup: amount chips ---- */
+.eg-amt {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.eg-amt-btn {
+  position: relative;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.045);
+  padding: 0.5rem 1.15rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.72);
+  transition: 0.2s;
+}
+.eg-amt-btn:hover { border-color: rgba(255, 255, 255, 0.3); color: #fff; }
+.eg-amt-btn.is-on {
+  border-color: transparent;
+  color: #1a0f05;
+  background: linear-gradient(95deg, var(--color-amber), var(--color-gold));
+  box-shadow: 0 10px 26px -12px rgba(232, 163, 61, 0.8);
+}
+.eg-amt-tag {
+  margin-left: 0.35rem;
+  font-size: 0.66rem;
+  font-weight: 600;
+  opacity: 0.75;
+}

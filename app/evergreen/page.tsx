@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import CategorySection from "@/components/music/CategorySection";
 import SupportCard from "@/components/support/SupportCard";
 import EvergreenHero from "@/components/evergreen/EvergreenHero";
-import EvergreenSupportPop from "@/components/evergreen/EvergreenSupportPop";
 import { songsByCategory, getGroup } from "@/lib/catalog";
 
 export const metadata: Metadata = {
@@ -40,9 +39,6 @@ export default function Page() {
       <div className="pb-4">
         <SupportCard compact />
       </div>
-
-      {/* Solid message popup → UPI app khulta hai (₹25 · pmharsh@fam) */}
-      <EvergreenSupportPop />
     </div>
   );
 }
