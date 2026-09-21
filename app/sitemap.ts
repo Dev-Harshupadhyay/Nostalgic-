@@ -3,6 +3,7 @@ import { SITE } from "@/lib/site";
 
 const ROUTES = [
   { path: "", priority: 1 },
+  { path: "/evergreen", priority: 0.9 },
   { path: "/old-songs", priority: 0.9 },
   { path: "/singles", priority: 0.8 },
   { path: "/trending", priority: 0.9 },

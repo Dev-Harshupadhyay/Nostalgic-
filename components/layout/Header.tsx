@@ -8,6 +8,7 @@ import { DEV } from "@/lib/site";
 
 export const TABS = [
   { href: "/", label: "Home", emoji: "🏠", hint: "Overview & featured" },
+  { href: "/evergreen", label: "Evergreen", emoji: "✨", hint: "2000s solid hits" },
   { href: "/old-songs", label: "Old Songs", emoji: "🎵", hint: "Memories" },
   { href: "/singles", label: "Singles", emoji: "💿", hint: "One song, one mood" },
   { href: "/trending", label: "New & Trending", emoji: "🔥", hint: "What's new" },

@@ -6,7 +6,7 @@ import type { GroupKey } from "@/lib/types";
 export const runtime = "nodejs";
 export const revalidate = 1800;
 
-const VALID: GroupKey[] = ["oldSongs", "singleSongs", "trending", "chhathPuja", "bhojpuri"];
+const VALID: GroupKey[] = ["evergreen", "oldSongs", "singleSongs", "trending", "chhathPuja", "bhojpuri"];
 
 /**
  * GET /api/youtube/discover?group=trending&category=Trending%20Now

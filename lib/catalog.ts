@@ -1,4 +1,5 @@
 import rawCatalog from "@/data/seed-catalog.json";
+import rawEvergreen from "@/data/evergreen-catalog.json";
 import type { Catalog, GroupKey, Song } from "./types";
 
 /**
@@ -21,8 +22,10 @@ function dedupe(songs: Song[]): Song[] {
 }
 
 const parsed = rawCatalog as unknown as Catalog;
+const parsedEvergreen = (rawEvergreen as unknown as { evergreen: Song[] }).evergreen;
 
 export const catalog: Catalog = {
+  evergreen: dedupe(parsedEvergreen ?? []),
   oldSongs: dedupe(parsed.oldSongs ?? []),
   singleSongs: dedupe(parsed.singleSongs ?? []),
   trending: dedupe(parsed.trending ?? []),
@@ -31,6 +34,7 @@ export const catalog: Catalog = {
 };
 
 export const allSongs: Song[] = dedupe([
+  ...catalog.evergreen,
   ...catalog.oldSongs,
   ...catalog.singleSongs,
   ...catalog.trending,
@@ -39,6 +43,13 @@ export const allSongs: Song[] = dedupe([
 ]);
 
 export const CATEGORY_ORDER: Record<GroupKey, string[]> = {
+  evergreen: [
+    "2000s Solid Hits",
+    "Evergreen Melodies",
+    "Romantic Evergreen",
+    "Retro Gold",
+    "Golden Oldies",
+  ],
   oldSongs: [
     "90s Hits",
     "2000s Hits",
@@ -77,6 +88,13 @@ export const CATEGORY_ORDER: Record<GroupKey, string[]> = {
 
 /** Discovery queries used by the live YouTube layer, per group + category. */
 export const DISCOVERY_QUERIES: Record<GroupKey, Record<string, string>> = {
+  evergreen: {
+    "2000s Solid Hits": "2000s hindi superhit songs",
+    "Evergreen Melodies": "evergreen hindi melodies",
+    "Romantic Evergreen": "evergreen romantic hindi songs",
+    "Retro Gold": "retro bollywood gold songs",
+    "Golden Oldies": "golden old hindi songs",
+  },
   oldSongs: {
     "90s Hits": "90s hindi songs",
     "2000s Hits": "2000s hindi songs",

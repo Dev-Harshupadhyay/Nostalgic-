@@ -4,6 +4,7 @@ import { ExternalLink } from "@/components/ui/Icons";
 
 const NAV_LINKS = [
   { href: "/", label: "Home" },
+  { href: "/evergreen", label: "Evergreen" },
   { href: "/old-songs", label: "Old Songs" },
   { href: "/singles", label: "Singles" },
   { href: "/trending", label: "Trending" },
