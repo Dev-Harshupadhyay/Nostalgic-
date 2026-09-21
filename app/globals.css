@@ -2728,7 +2728,6 @@ h1, h2, h3, h4 {
   transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.3s ease,
     box-shadow 0.35s ease;
 }
-.ch-gal-tile:nth-child(3n + 1) { aspect-ratio: 16 / 11; }
 .ch-gal-tile img {
   height: 100%;
   width: 100%;
