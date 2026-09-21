@@ -32,16 +32,65 @@ export const SUPPORT = {
   note: "Support Dev Harsh",
 };
 
-export function buildUpiLink(amount: number): string {
-  const params = new URLSearchParams({
+function upiQuery(amount: number): string {
+  return new URLSearchParams({
     pa: SUPPORT.upiId,
     pn: SUPPORT.payeeName,
     am: amount.toFixed(2),
     cu: SUPPORT.currency,
     tn: SUPPORT.note,
-  });
-  return `upi://pay?${params.toString()}`;
+  }).toString();
 }
+
+/** Generic UPI intent — the OS shows every installed UPI app. */
+export function buildUpiLink(amount: number): string {
+  return `upi://pay?${upiQuery(amount)}`;
+}
+
+export type UpiApp = "any" | "gpay" | "phonepe" | "paytm";
+
+/**
+ * App-specific UPI deep links.
+ *
+ * Each major UPI app registers its own scheme, so linking to it opens that app
+ * directly instead of showing the Android chooser. The payment payload is
+ * identical in every case — only the scheme differs. If the app is not
+ * installed the link simply does nothing, which is why the UI always keeps the
+ * generic "Any UPI app" option and a copyable UPI ID as fallbacks.
+ */
+export function buildAppUpiLink(app: UpiApp, amount: number): string {
+  const q = upiQuery(amount);
+  switch (app) {
+    case "gpay":
+      return `tez://upi/pay?${q}`;
+    case "phonepe":
+      return `phonepe://pay?${q}`;
+    case "paytm":
+      return `paytmmp://pay?${q}`;
+    default:
+      return `upi://pay?${q}`;
+  }
+}
+
+/**
+ * Android intent URL that targets a specific app package and falls back to the
+ * Play Store when it is missing. Used on Android where it is the most reliable
+ * way to reach one particular UPI app.
+ */
+export function buildAndroidIntent(app: Exclude<UpiApp, "any">, amount: number): string {
+  const pkg = {
+    gpay: "com.google.android.apps.nbu.paisa.user",
+    phonepe: "com.phonepe.app",
+    paytm: "net.one97.paytm",
+  }[app];
+  return `intent://pay?${upiQuery(amount)}#Intent;scheme=upi;package=${pkg};end`;
+}
+
+export const UPI_APPS: { id: Exclude<UpiApp, "any">; label: string; hue: string }[] = [
+  { id: "gpay", label: "GPay", hue: "#4285F4" },
+  { id: "phonepe", label: "PhonePe", hue: "#5f259f" },
+  { id: "paytm", label: "Paytm", hue: "#00BAF2" },
+];
 
 export const PROJECTS = [
   {

@@ -1,7 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { SUPPORT, DEV, buildUpiLink } from "@/lib/site";
+import {
+  SUPPORT,
+  DEV,
+  UPI_APPS,
+  buildUpiLink,
+  buildAppUpiLink,
+  buildAndroidIntent,
+} from "@/lib/site";
+import { GPayMark, PhonePeMark, PaytmMark, UpiMark } from "@/components/support/UpiMarks";
 import { usePlayer } from "@/components/player/PlayerProvider";
 import { useUser } from "@/components/user/UserProvider";
 import { Close } from "@/components/ui/Icons";
@@ -87,7 +95,15 @@ export default function SupportPop() {
     }
   };
 
-  const pay = () => {
+  /**
+   * Hand off to a UPI app.
+   *
+   * On Android an `intent://` URL targeting the app's package is the most
+   * reliable way to land in one specific app; everywhere else we use the app's
+   * own scheme (tez:// , phonepe:// , paytmmp://). "any" uses the plain
+   * upi:// intent so the OS shows every installed UPI app.
+   */
+  const pay = (app: "any" | "gpay" | "phonepe" | "paytm" = "any") => {
     const isMobile =
       window.matchMedia("(pointer: coarse)").matches || window.innerWidth < 820;
 
@@ -97,10 +113,23 @@ export default function SupportPop() {
       return;
     }
 
-    window.location.href = buildUpiLink(amount);
+    const isAndroid = /android/i.test(navigator.userAgent);
+    const url =
+      app !== "any" && isAndroid
+        ? buildAndroidIntent(app, amount)
+        : app !== "any"
+          ? buildAppUpiLink(app, amount)
+          : buildUpiLink(amount);
+
+    window.location.href = url;
+
     window.setTimeout(() => {
       if (!document.hidden) {
-        notify("Koi UPI app nahi mili? UPI ID copy karke manually bhejo.");
+        notify(
+          app === "any"
+            ? "Koi UPI app nahi mili? UPI ID copy karke manually bhejo."
+            : "Ye app nahi mili — 'Koi bhi UPI app' try karo."
+        );
       }
     }, 1800);
   };
@@ -174,8 +203,31 @@ export default function SupportPop() {
           </div>
         </dl>
 
-        <button type="button" onClick={pay} className="eg-pop-pay">
-          <span aria-hidden>❤️</span> ₹{amount} de kar support karo
+        <div className="upi-apps" role="group" aria-label="Pay with a UPI app">
+          {UPI_APPS.map((a) => (
+            <button
+              key={a.id}
+              type="button"
+              onClick={() => pay(a.id)}
+              className="upi-app"
+              style={{ ["--hue" as string]: a.hue }}
+              aria-label={`Pay ₹${amount} with ${a.label}`}
+            >
+              <span className="upi-app-mark" aria-hidden>
+                {a.id === "gpay" ? <GPayMark /> : null}
+                {a.id === "phonepe" ? <PhonePeMark /> : null}
+                {a.id === "paytm" ? <PaytmMark /> : null}
+              </span>
+              <span className="upi-app-name">{a.label}</span>
+            </button>
+          ))}
+        </div>
+
+        <button type="button" onClick={() => pay("any")} className="eg-pop-pay">
+          <span aria-hidden className="inline-flex items-center gap-2">
+            <UpiMark className="h-4 w-9" />
+          </span>
+          ₹{amount} · koi bhi UPI app
         </button>
 
         <div className="eg-pop-row">

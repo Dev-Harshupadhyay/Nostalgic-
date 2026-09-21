@@ -1,0 +1,122 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import GlowButton from "@/components/ui/GlowButton";
+import { usePlayer } from "@/components/player/PlayerProvider";
+import { getGroup } from "@/lib/catalog";
+import { CHHATH_INTRO, CHHATH_RITUALS, CHHATH_FACTS } from "@/lib/chhath-notes";
+import { Play } from "@/components/ui/Icons";
+
+function useReveal<T extends HTMLElement>() {
+  const ref = useRef<T>(null);
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      setShown(true);
+      return;
+    }
+    const io = new IntersectionObserver(
+      (e) => {
+        if (e.some((x) => x.isIntersecting)) {
+          setShown(true);
+          io.disconnect();
+        }
+      },
+      { rootMargin: "0px 0px -10% 0px", threshold: 0.06 }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  return { ref, shown };
+}
+
+export default function ChhathIntro({ count }: { count: number }) {
+  const { playQueue } = usePlayer();
+  const songs = getGroup("chhathPuja");
+  const ritual = useReveal<HTMLDivElement>();
+
+  return (
+    <>
+      {/* ------------------------------ Hero ------------------------------ */}
+      <header className="ch-hero fade-up">
+        <div aria-hidden className="ch-sun" />
+        <div aria-hidden className="ch-water" />
+
+        <p className="eyebrow relative">{CHHATH_INTRO.eyebrow}</p>
+
+        <h1 className="ch-title relative mt-2 text-[2rem] font-extrabold tracking-tight sm:text-[3.2rem]">
+          <span aria-hidden className="mr-2">🪔</span>
+          {CHHATH_INTRO.title}
+        </h1>
+
+        <p className="relative mt-3 max-w-2xl text-[0.95rem] font-semibold leading-relaxed text-white/80">
+          {CHHATH_INTRO.lead}
+        </p>
+
+        <p className="relative mt-3 max-w-3xl text-sm leading-[1.85] text-white/58">
+          {CHHATH_INTRO.body}
+        </p>
+
+        <div className="ch-facts relative">
+          {CHHATH_FACTS.map((f) => (
+            <div key={f.v} className="ch-fact">
+              <span className="ch-fact-k">{f.k}</span>
+              <span className="ch-fact-v">{f.v}</span>
+            </div>
+          ))}
+        </div>
+
+        <div className="relative mt-6 flex flex-wrap items-center gap-3">
+          <GlowButton size="lg" aura onClick={() => playQueue(songs, 0)} aria-label="Play all Chhath songs">
+            <Play size={16} /> Chhath geet chalao
+          </GlowButton>
+          <span className="eg-chip">{count} songs</span>
+        </div>
+      </header>
+
+      {/* ---------------------------- Four days ---------------------------- */}
+      <section
+        ref={ritual.ref}
+        className={`ch-days eg-block ${ritual.shown ? "is-in" : ""}`}
+        aria-labelledby="ch-days-title"
+      >
+        <h2 id="ch-days-title" className="ch-section-title">
+          Char din ka mahaparv
+        </h2>
+        <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-white/52">
+          Kartik Shukla Chaturthi se Saptami tak — har din ka apna niyam, apna prasad, apni
+          maryada.
+        </p>
+
+        <ol className="ch-day-list">
+          {CHHATH_RITUALS.map((d, i) => (
+            <li
+              key={d.name}
+              className="ch-day stagger-in"
+              style={{ animationDelay: `${i * 90}ms` }}
+            >
+              <span className="ch-day-n" aria-hidden>
+                {i + 1}
+              </span>
+              <div className="min-w-0">
+                <p className="ch-day-label">{d.day}</p>
+                <h3 className="ch-day-name">{d.name}</h3>
+                <p className="ch-day-text">{d.text}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+
+        <blockquote className="ch-quote">
+          <p>
+            “Chhath me na koi bada hai na chhota. Sabhi ek hi ghat par, ek hi paani me, ek hi
+            sooraj ke saamne khade hote hain.”
+          </p>
+          <footer>— Bihar ki sabse sachi parampara</footer>
+        </blockquote>
+      </section>
+    </>
+  );
+}

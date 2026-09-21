@@ -2,7 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import GlowButton from "@/components/ui/GlowButton";
-import { SUPPORT, DEV, buildUpiLink } from "@/lib/site";
+import {
+  SUPPORT,
+  DEV,
+  UPI_APPS,
+  buildUpiLink,
+  buildAppUpiLink,
+  buildAndroidIntent,
+} from "@/lib/site";
+import { GPayMark, PhonePeMark, PaytmMark } from "@/components/support/UpiMarks";
 import { usePlayer } from "@/components/player/PlayerProvider";
 import QrModal from "@/components/support/QrModal";
 
@@ -41,7 +49,12 @@ export default function SupportCard({ compact = false, hideHeading = false }: Pr
 
   const valid = effective > 0;
 
-  const pay = () => {
+  /**
+   * Deep-link into a UPI app. "any" uses the generic upi:// intent so the OS
+   * lists every installed app; a specific id goes straight to that app via an
+   * Android package intent (most reliable) or its own custom scheme.
+   */
+  const pay = (app: "any" | "gpay" | "phonepe" | "paytm" = "any") => {
     if (!valid) {
       notify("Enter a valid amount first");
       return;
@@ -50,8 +63,15 @@ export default function SupportCard({ compact = false, hideHeading = false }: Pr
       setQrOpen(true);
       return;
     }
-    // Deep-links into GPay / PhonePe / Paytm / any UPI app on the device.
-    window.location.href = buildUpiLink(effective);
+    const isAndroid = /android/i.test(navigator.userAgent);
+    const url =
+      app !== "any" && isAndroid
+        ? buildAndroidIntent(app, effective)
+        : app !== "any"
+          ? buildAppUpiLink(app, effective)
+          : buildUpiLink(effective);
+
+    window.location.href = url;
     window.setTimeout(() => {
       notify("Opening your UPI app… if nothing happens, copy the UPI ID.");
     }, 1400);
@@ -160,11 +180,34 @@ export default function SupportCard({ compact = false, hideHeading = false }: Pr
         ) : null}
       </div>
 
+      {isMobile ? (
+        <div className="upi-apps mt-5" role="group" aria-label="Pay with a UPI app">
+          {UPI_APPS.map((a) => (
+            <button
+              key={a.id}
+              type="button"
+              onClick={() => pay(a.id)}
+              disabled={!valid}
+              className="upi-app"
+              style={{ ["--hue" as string]: a.hue }}
+              aria-label={`Pay ₹${effective || 0} with ${a.label}`}
+            >
+              <span className="upi-app-mark" aria-hidden>
+                {a.id === "gpay" ? <GPayMark /> : null}
+                {a.id === "phonepe" ? <PhonePeMark /> : null}
+                {a.id === "paytm" ? <PaytmMark /> : null}
+              </span>
+              <span className="upi-app-name">{a.label}</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
+
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <GlowButton
           size="lg"
           aura
-          onClick={pay}
+          onClick={() => pay("any")}
           disabled={!valid}
           aria-label={
             isMobile === false
