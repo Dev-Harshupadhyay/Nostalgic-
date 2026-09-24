@@ -11,7 +11,7 @@ import MiniPlayer from "@/components/player/MiniPlayer";
 import FullPlayer from "@/components/player/FullPlayer";
 import QueuePanel from "@/components/player/QueuePanel";
 import WelcomeToast from "@/components/layout/WelcomeToast";
-import SupportPop from "@/components/support/SupportPop";
+import TelegramPop from "@/components/telegram/TelegramPop";
 import { SITE, DEV } from "@/lib/site";
 import "./globals.css";
 
@@ -139,7 +139,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <QueuePanel />
           <WelcomeToast />
           <WelcomeGate />
-          <SupportPop />
+          <TelegramPop />
           </UserProvider>
         </PlayerProvider>
         </LocaleProvider>
