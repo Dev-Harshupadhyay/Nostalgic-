@@ -8,9 +8,11 @@ import type { Song } from "@/lib/types";
 import { Close, Play, Queue, Shuffle, Spinner, Trash } from "@/components/ui/Icons";
 
 const STORAGE_KEY = "nostalgic:my-playlists";
+const VIEW_STORAGE_KEY = "nostalgic:my-playlists-view";
 const MAX_SAVED_PLAYLISTS = 12;
 
 type State = "idle" | "loading" | "done" | "error";
+type SavedView = "grid" | "list";
 type Playlist = {
   id: string;
   title: string;
@@ -90,6 +92,7 @@ export default function MyPlaylistClient() {
   const [url, setUrl] = useState("");
   const [playlist, setPlaylist] = useState<Playlist | null>(null);
   const [savedPlaylists, setSavedPlaylists] = useState<SavedPlaylist[]>([]);
+  const [savedView, setSavedView] = useState<SavedView>("grid");
   const [savedHydrated, setSavedHydrated] = useState(false);
   const [state, setState] = useState<State>("idle");
   const [error, setError] = useState<PlaylistError | null>(null);
@@ -100,6 +103,8 @@ export default function MyPlaylistClient() {
 
   useEffect(() => {
     setSavedPlaylists(readSavedPlaylists());
+    const rememberedView = window.localStorage.getItem(VIEW_STORAGE_KEY);
+    if (rememberedView === "grid" || rememberedView === "list") setSavedView(rememberedView);
     setSavedHydrated(true);
   }, []);
 
@@ -171,6 +176,15 @@ export default function MyPlaylistClient() {
     setError(null);
     setState("done");
     window.setTimeout(() => resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+  };
+
+  const changeSavedView = (view: SavedView) => {
+    setSavedView(view);
+    try {
+      window.localStorage.setItem(VIEW_STORAGE_KEY, view);
+    } catch {
+      // View preference is optional; the playlist data is still kept separately.
+    }
   };
 
   const removeSavedPlaylist = (id: string) => {
@@ -263,13 +277,23 @@ export default function MyPlaylistClient() {
               <p className="eyebrow">Saved on this device</p>
               <h2 id="saved-playlists-title" className="mt-1 text-xl font-extrabold">Your playlist shelf</h2>
             </div>
-            <span className="my-saved-playlists-count">{savedPlaylists.length}/{MAX_SAVED_PLAYLISTS} saved</span>
+            <div className="my-saved-playlists-actions">
+              <span className="my-saved-playlists-count">{savedPlaylists.length}/{MAX_SAVED_PLAYLISTS} saved</span>
+              <div className="my-saved-view-switch" role="group" aria-label="Saved playlists layout">
+                <button type="button" onClick={() => changeSavedView("grid")} aria-pressed={savedView === "grid"} className={savedView === "grid" ? "is-on" : ""}>
+                  <span aria-hidden>▦</span> Grid
+                </button>
+                <button type="button" onClick={() => changeSavedView("list")} aria-pressed={savedView === "list"} className={savedView === "list" ? "is-on" : ""}>
+                  <span aria-hidden>☰</span> List
+                </button>
+              </div>
+            </div>
           </div>
 
           {savedPlaylists.length ? (
-            <div className="my-saved-playlists-grid">
+            <div className={savedView === "grid" ? "my-saved-playlists-grid" : "my-saved-playlists-list"}>
               {savedPlaylists.map((saved, index) => (
-                <article key={saved.id} className="saved-playlist-card stagger-in" style={{ animationDelay: `${Math.min(index, 10) * 45}ms` }}>
+                <article key={saved.id} className={`saved-playlist-card ${savedView === "list" ? "is-list" : ""} stagger-in`} style={{ animationDelay: `${Math.min(index, 10) * 45}ms` }}>
                   <button type="button" onClick={() => openSavedPlaylist(saved)} className="saved-playlist-main" aria-label={`Open ${saved.title}`}>
                     <span className="saved-playlist-art" aria-hidden>
                       {saved.thumbnail ? (

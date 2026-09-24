@@ -3966,3 +3966,56 @@ h1, h2, h3, h4 {
   .saved-playlist-remove { opacity: 1; height: 1.65rem; width: 1.65rem; top: 0.3rem; right: 0.3rem; }
   .my-saved-playlists-empty { align-items: flex-start; }
 }
+
+/* Saved playlist shelf: compact grid / list layout switch. */
+.my-saved-playlists-actions { display: flex; align-items: center; justify-content: flex-end; gap: 0.55rem; }
+.my-saved-view-switch {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.18rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.18);
+}
+.my-saved-view-switch button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  border-radius: 7px;
+  padding: 0.32rem 0.48rem;
+  color: rgba(255, 255, 255, 0.48);
+  font-size: 0.65rem;
+  font-weight: 700;
+  transition: 170ms ease;
+}
+.my-saved-view-switch button:hover { color: rgba(255, 255, 255, 0.85); }
+.my-saved-view-switch button.is-on { background: rgba(58, 167, 255, 0.26); color: #d9f5ff; box-shadow: inset 0 0 0 1px rgba(106, 219, 255, 0.25); }
+.my-saved-playlists-grid { grid-template-columns: repeat(auto-fill, minmax(158px, 1fr)); }
+.my-saved-playlists-list { display: grid; gap: 0.55rem; }
+.saved-playlist-card.is-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0.35rem;
+  overflow: visible;
+}
+.saved-playlist-card.is-list .saved-playlist-main { display: flex; min-width: 0; align-items: center; gap: 0.75rem; }
+.saved-playlist-card.is-list .saved-playlist-art { width: 6.4rem; flex: 0 0 6.4rem; aspect-ratio: 1 / 1; border-radius: 17px 0 0 17px; font-size: 1.45rem; }
+.saved-playlist-card.is-list .saved-playlist-copy { min-width: 0; padding: 0.6rem 0.15rem; }
+.saved-playlist-card.is-list .saved-playlist-title { font-size: 0.88rem; }
+.saved-playlist-card.is-list .saved-playlist-channel { font-size: 0.72rem; }
+.saved-playlist-card.is-list .saved-playlist-meta { min-width: 6.6rem; padding: 0.55rem 0.25rem; color: rgba(255, 255, 255, 0.46); }
+.saved-playlist-card.is-list .saved-playlist-remove { position: static; align-self: center; margin-right: 0.35rem; opacity: 1; }
+@media (max-width: 520px) {
+  .my-saved-playlists-head { align-items: flex-start; }
+  .my-saved-playlists-actions { flex-direction: column; align-items: flex-end; gap: 0.35rem; }
+  .my-saved-playlists-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .saved-playlist-card.is-list { gap: 0.15rem; }
+  .saved-playlist-card.is-list .saved-playlist-main { gap: 0.55rem; }
+  .saved-playlist-card.is-list .saved-playlist-art { width: 4.65rem; flex-basis: 4.65rem; border-radius: 15px 0 0 15px; }
+  .saved-playlist-card.is-list .saved-playlist-meta { display: none; }
+  .saved-playlist-card.is-list .saved-playlist-copy { padding: 0.5rem 0.1rem; }
+  .saved-playlist-card.is-list .saved-playlist-title { font-size: 0.75rem; }
+  .saved-playlist-card.is-list .saved-playlist-channel { font-size: 0.62rem; }
+  .saved-playlist-card.is-list .saved-playlist-remove { margin-right: 0.25rem; }
+}
