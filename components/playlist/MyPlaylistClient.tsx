@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import GlowButton from "@/components/ui/GlowButton";
-import SongCard from "@/components/music/SongCard";
+import SongRow from "@/components/music/SongRow";
 import { usePlayer } from "@/components/player/PlayerProvider";
 import type { Song } from "@/lib/types";
 import { Close, Play, Queue, Shuffle, Spinner, Trash } from "@/components/ui/Icons";
@@ -387,13 +387,20 @@ export default function MyPlaylistClient() {
           </section>
 
           {playlist.songs.length ? (
-            <div className="my-playlist-grid mt-7">
-              {playlist.songs.map((song, index) => (
-                <div key={song.youtubeId} className="stagger-in" style={{ animationDelay: `${Math.min(index, 14) * 36}ms` }}>
-                  <SongCard song={song} contextQueue={playlist.songs} priority={index < 6} />
+            <section className="my-playlist-tracks mt-7" aria-labelledby="playlist-tracks-title">
+              <div className="my-playlist-tracks-head">
+                <div>
+                  <p className="eyebrow">Tap any song to play</p>
+                  <h3 id="playlist-tracks-title" className="mt-1 text-lg font-extrabold">Playlist songs</h3>
                 </div>
-              ))}
-            </div>
+                <span className="my-playlist-tracks-count">{playlist.songs.length} tracks</span>
+              </div>
+              <ol className="my-playlist-song-list">
+                {playlist.songs.map((song, index) => (
+                  <SongRow key={song.youtubeId} song={song} index={index} contextQueue={playlist.songs} />
+                ))}
+              </ol>
+            </section>
           ) : (
             <div className="my-playlist-empty mt-7">
               <p className="text-3xl" aria-hidden>🎧</p>

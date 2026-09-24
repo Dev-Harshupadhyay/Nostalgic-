@@ -4019,3 +4019,46 @@ h1, h2, h3, h4 {
   .saved-playlist-card.is-list .saved-playlist-channel { font-size: 0.62rem; }
   .saved-playlist-card.is-list .saved-playlist-remove { margin-right: 0.25rem; }
 }
+
+/* Imported playlist tracks deliberately stay as easy-to-tap rows, not tiny cards. */
+.my-playlist-tracks {
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 24px;
+  background: linear-gradient(145deg, rgba(24, 20, 31, 0.76), rgba(10, 11, 17, 0.84));
+  padding: 1rem;
+  box-shadow: 0 22px 45px -34px rgba(0, 0, 0, 0.95);
+}
+.my-playlist-tracks-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.15rem 0.25rem 0.75rem;
+}
+.my-playlist-tracks-count {
+  flex: 0 0 auto;
+  border: 1px solid rgba(232, 163, 61, 0.26);
+  border-radius: 999px;
+  background: rgba(232, 163, 61, 0.09);
+  padding: 0.3rem 0.6rem;
+  color: rgba(255, 221, 166, 0.85);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+.my-playlist-song-list {
+  display: grid;
+  max-height: min(42rem, 68dvh);
+  gap: 0.18rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 0.2rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(232, 163, 61, 0.45) transparent;
+}
+.my-playlist-song-list::-webkit-scrollbar { width: 5px; }
+.my-playlist-song-list::-webkit-scrollbar-thumb { border-radius: 99px; background: rgba(232, 163, 61, 0.45); }
+@media (max-width: 520px) {
+  .my-playlist-tracks { border-radius: 19px; padding: 0.72rem; }
+  .my-playlist-tracks-head { padding: 0.1rem 0.15rem 0.55rem; }
+  .my-playlist-song-list { max-height: 31rem; }
+}
