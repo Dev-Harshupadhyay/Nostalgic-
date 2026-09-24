@@ -72,8 +72,10 @@ Render mein ye restriction hai hi nahi — koi bhi author ho, deploy ho jaata ha
    ```js
    Object.keys(localStorage).filter(k => k.startsWith("nostalgic:")).forEach(k => localStorage.removeItem(k))
    ```
-3. Support section — mobile pe UPI deep link khulta hai, desktop pe QR popup
-4. Asli phone pe ek gaana chala ke lock screen ke play/pause/next check karna
+3. `My Playlist` tab — public YouTube playlist paste karke full list fetch/play check karo; private list par Public karne wala error aana chahiye
+4. Telegram notice — onboarding ke baad sirf ek baar dikhe, QR/button official channel khole, aur 5 seconds mein close ho
+5. Support section — mobile pe UPI deep link khulta hai, desktop pe QR popup
+6. Asli phone pe ek gaana chala ke lock screen ke play/pause/next check karna
 
 ---
 

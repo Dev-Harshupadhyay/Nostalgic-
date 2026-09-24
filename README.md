@@ -20,7 +20,9 @@ Built with ❤️ by [Harsh](https://new-profotilo-flame.vercel.app/).
 | 🪔 **Chhath Puja** | Chhath Geet · Traditional · Popular · Bhajan · Special · Latest |
 | 🎤 **Bhojpuri** | Hits · Classics · New · Folk · Bhakti · Popular Artists |
 | 🔎 **Search** | Debounced global search with skeleton, empty and error states |
+| 🎶 **My Playlist** | Paste a public YouTube playlist link, fetch up to 100 playable videos, then play, shuffle or queue the whole list |
 | ❤️ **Support Dev Harsh** | ₹25 default, ₹50 / ₹100 / custom amount, real UPI deep link |
+| ✈️ **Telegram notice** | One gentle official-channel QR notice per browser session; closes itself after five seconds |
 | 🛠️ **Developer Dashboard** | About, projects, portfolio and Timepass Premium links |
 
 ### Player
@@ -101,6 +103,16 @@ titles/channels (`&amp;`, `&#39;`) are decoded before display.
 > never prefixed with `NEXT_PUBLIC_`, so it can never reach the browser bundle. The browser
 > only ever calls `/api/youtube/search?q=…` and receives normalized `Song[]` objects.
 
+### Public playlist import
+
+`/playlist` accepts only YouTube / YouTube Music links containing a `list` ID. The server never
+fetches a caller-supplied host: it extracts and validates the ID, then reads YouTube itself. When
+`YOUTUBE_API_KEY` is available, the official playlist endpoints supply the data and validate that
+the playlist visibility is `public`. Without a key, the server parses YouTube's public playlist
+page. The browser receives normalized `Song[]` only; no imported playlist is stored by the app.
+Private, unavailable and Watch Later lists return an explicit instruction to change visibility to
+**Public**. The first 100 playable videos are supported.
+
 ### Search UX
 
 Debounced live search (420 ms) with request cancellation — a stale response can never
@@ -120,6 +132,7 @@ media URLs, or re-hosted.
 | --- | --- |
 | `GET /api/youtube/search?q=&max=&pageToken=&category=` | Live YouTube search (paginated) |
 | `GET /api/youtube/discover?group=&category=` | Refresh one category with live results |
+| `GET /api/youtube/playlist?url=&max=` | Fetch up to 100 songs from one public YouTube playlist; private/unavailable lists return a clear 403 message |
 
 ---
 
