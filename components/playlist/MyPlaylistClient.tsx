@@ -5,7 +5,10 @@ import GlowButton from "@/components/ui/GlowButton";
 import SongCard from "@/components/music/SongCard";
 import { usePlayer } from "@/components/player/PlayerProvider";
 import type { Song } from "@/lib/types";
-import { Close, Play, Queue, Shuffle, Spinner } from "@/components/ui/Icons";
+import { Close, Play, Queue, Shuffle, Spinner, Trash } from "@/components/ui/Icons";
+
+const STORAGE_KEY = "nostalgic:my-playlists";
+const MAX_SAVED_PLAYLISTS = 12;
 
 type State = "idle" | "loading" | "done" | "error";
 type Playlist = {
@@ -17,7 +20,50 @@ type Playlist = {
   source: "youtube-api" | "youtube-public";
   cached?: boolean;
 };
+type SavedPlaylist = Playlist & { url: string; savedAt: number };
 type PlaylistError = { code?: "INVALID_URL" | "PRIVATE" | "UNAVAILABLE"; error?: string };
+
+function readSavedPlaylists(): SavedPlaylist[] {
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((item): item is SavedPlaylist => {
+        if (!item || typeof item !== "object") return false;
+        const entry = item as Partial<SavedPlaylist>;
+        return (
+          typeof entry.id === "string" &&
+          typeof entry.title === "string" &&
+          typeof entry.url === "string" &&
+          typeof entry.savedAt === "number" &&
+          Array.isArray(entry.songs)
+        );
+      })
+      .sort((a, b) => b.savedAt - a.savedAt)
+      .slice(0, MAX_SAVED_PLAYLISTS);
+  } catch {
+    return [];
+  }
+}
+
+function saveToDevice(items: SavedPlaylist[]) {
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function savedTime(timestamp: number) {
+  const delta = Date.now() - timestamp;
+  if (delta < 60_000) return "Just now";
+  if (delta < 3_600_000) return `${Math.max(1, Math.floor(delta / 60_000))}m ago`;
+  if (delta < 86_400_000) return `${Math.max(1, Math.floor(delta / 3_600_000))}h ago`;
+  return new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short" }).format(timestamp);
+}
 
 function LoadingCards() {
   return (
@@ -35,18 +81,45 @@ function LoadingCards() {
   );
 }
 
-/** A private, paste-only YouTube playlist importer. Nothing is stored on our server. */
+/**
+ * Public YouTube playlist importer. Successful imports are saved only in the
+ * visitor's localStorage, so the grid survives reloads without an account.
+ */
 export default function MyPlaylistClient() {
-  const { playQueue, addToQueue } = usePlayer();
+  const { playQueue, addToQueue, notify } = usePlayer();
   const [url, setUrl] = useState("");
   const [playlist, setPlaylist] = useState<Playlist | null>(null);
+  const [savedPlaylists, setSavedPlaylists] = useState<SavedPlaylist[]>([]);
+  const [savedHydrated, setSavedHydrated] = useState(false);
   const [state, setState] = useState<State>("idle");
   const [error, setError] = useState<PlaylistError | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const resultRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const runRef = useRef(0);
 
+  useEffect(() => {
+    setSavedPlaylists(readSavedPlaylists());
+    setSavedHydrated(true);
+  }, []);
+
   useEffect(() => () => abortRef.current?.abort(), []);
+
+  const rememberPlaylist = (fetched: Playlist, sourceUrl: string) => {
+    const entry: SavedPlaylist = {
+      ...fetched,
+      cached: undefined,
+      url: sourceUrl,
+      savedAt: Date.now(),
+    };
+    setSavedPlaylists((previous) => {
+      const next = [entry, ...previous.filter((item) => item.id !== entry.id)].slice(0, MAX_SAVED_PLAYLISTS);
+      if (!saveToDevice(next)) {
+        window.setTimeout(() => notify("Playlist load ho gayi, par phone storage mein save nahi ho paayi."), 0);
+      }
+      return next;
+    });
+  };
 
   const fetchPlaylist = async () => {
     const value = url.trim();
@@ -75,6 +148,8 @@ export default function MyPlaylistClient() {
       if (!response.ok) throw data;
       setPlaylist(data);
       setState("done");
+      rememberPlaylist(data, value);
+      window.setTimeout(() => resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
     } catch (caught) {
       if ((caught as Error).name === "AbortError") return;
       if (run !== runRef.current) return;
@@ -88,6 +163,25 @@ export default function MyPlaylistClient() {
     }
   };
 
+  const openSavedPlaylist = (saved: SavedPlaylist) => {
+    abortRef.current?.abort();
+    runRef.current += 1;
+    setUrl(saved.url);
+    setPlaylist(saved);
+    setError(null);
+    setState("done");
+    window.setTimeout(() => resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+  };
+
+  const removeSavedPlaylist = (id: string) => {
+    setSavedPlaylists((previous) => {
+      const next = previous.filter((item) => item.id !== id);
+      saveToDevice(next);
+      return next;
+    });
+    notify("Playlist device se hata di gayi.");
+  };
+
   const shuffleAndPlay = () => {
     if (!playlist?.songs.length) return;
     const songs = [...playlist.songs];
@@ -99,15 +193,15 @@ export default function MyPlaylistClient() {
   };
 
   return (
-    <section aria-label="Import a public YouTube playlist">
+    <section aria-label="Import and save public YouTube playlists">
       <div className="my-playlist-form">
         <div className="my-playlist-form-aura" aria-hidden />
         <div className="relative">
           <p className="eyebrow">Public YouTube playlist</p>
           <h2 className="mt-1.5 text-xl font-extrabold sm:text-2xl">Link paste karo, playlist chalao</h2>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/58">
-            YouTube par playlist <b className="text-white/84">Public</b> honi chahiye. Private playlist
-            fetch nahi hoti aur hum aapka link ya songs save nahi karte.
+            YouTube par playlist <b className="text-white/84">Public</b> honi chahiye. Fetch hote hi yeh
+            playlist <b className="text-white/84">isi device</b> par save ho jaayegi — hamare server par nahi.
           </p>
 
           <form
@@ -153,7 +247,7 @@ export default function MyPlaylistClient() {
             </div>
             <GlowButton type="submit" size="lg" className="shrink-0" disabled={state === "loading"}>
               {state === "loading" ? <Spinner size={17} /> : <Queue size={17} />}
-              {state === "loading" ? "Fetching…" : "Fetch playlist"}
+              {state === "loading" ? "Fetching…" : "Fetch & save"}
             </GlowButton>
           </form>
           <p className="mt-2 text-[0.72rem] text-white/38">
@@ -162,22 +256,71 @@ export default function MyPlaylistClient() {
         </div>
       </div>
 
+      {savedHydrated ? (
+        <section className="my-saved-playlists" aria-labelledby="saved-playlists-title">
+          <div className="my-saved-playlists-head">
+            <div>
+              <p className="eyebrow">Saved on this device</p>
+              <h2 id="saved-playlists-title" className="mt-1 text-xl font-extrabold">Your playlist shelf</h2>
+            </div>
+            <span className="my-saved-playlists-count">{savedPlaylists.length}/{MAX_SAVED_PLAYLISTS} saved</span>
+          </div>
+
+          {savedPlaylists.length ? (
+            <div className="my-saved-playlists-grid">
+              {savedPlaylists.map((saved, index) => (
+                <article key={saved.id} className="saved-playlist-card stagger-in" style={{ animationDelay: `${Math.min(index, 10) * 45}ms` }}>
+                  <button type="button" onClick={() => openSavedPlaylist(saved)} className="saved-playlist-main" aria-label={`Open ${saved.title}`}>
+                    <span className="saved-playlist-art" aria-hidden>
+                      {saved.thumbnail ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={saved.thumbnail} alt="" loading="lazy" />
+                      ) : (
+                        <span>🎶</span>
+                      )}
+                      <span className="saved-playlist-art-shade" />
+                      <span className="saved-playlist-open"><Queue size={16} /> Open</span>
+                    </span>
+                    <span className="saved-playlist-copy">
+                      <span className="line-1 saved-playlist-title">{saved.title}</span>
+                      <span className="line-1 saved-playlist-channel">{saved.channel || "YouTube"}</span>
+                    </span>
+                  </button>
+                  <div className="saved-playlist-meta">
+                    <span>{saved.songs.length} {saved.songs.length === 1 ? "song" : "songs"} · {savedTime(saved.savedAt)}</span>
+                    <button type="button" onClick={() => playQueue(saved.songs, 0)} aria-label={`Play ${saved.title}`} className="saved-playlist-play">
+                      <Play size={14} />
+                    </button>
+                  </div>
+                  <button type="button" onClick={() => removeSavedPlaylist(saved.id)} aria-label={`Remove ${saved.title} from saved playlists`} className="saved-playlist-remove">
+                    <Trash size={14} />
+                  </button>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="my-saved-playlists-empty">
+              <span aria-hidden className="text-2xl">📚</span>
+              <div>
+                <h3 className="font-bold text-white/84">Abhi koi playlist saved nahi hai</h3>
+                <p className="mt-0.5 text-sm text-white/48">Upar public YouTube playlist link paste karo — wo yahin ek beautiful grid mein save ho jaayegi.</p>
+              </div>
+            </div>
+          )}
+        </section>
+      ) : null}
+
       <p className="sr-only" aria-live="polite">
-        {state === "loading" ? "Fetching public YouTube playlist" : playlist ? `${playlist.songs.length} songs found` : ""}
+        {state === "loading" ? "Fetching public YouTube playlist" : playlist ? `${playlist.songs.length} songs found and saved on this device` : ""}
       </p>
 
       {state === "loading" ? <div className="mt-7"><LoadingCards /></div> : null}
 
       {state === "error" && error ? (
-        <div
-          role="alert"
-          className={`my-playlist-error mt-7 ${error.code === "PRIVATE" ? "is-private" : ""}`}
-        >
+        <div role="alert" className={`my-playlist-error mt-7 ${error.code === "PRIVATE" ? "is-private" : ""}`}>
           <span className="text-2xl" aria-hidden>{error.code === "PRIVATE" ? "🔒" : "⚠️"}</span>
           <div>
-            <h3 className="font-bold text-white/92">
-              {error.code === "PRIVATE" ? "Playlist private hai" : "Playlist fetch nahi hui"}
-            </h3>
+            <h3 className="font-bold text-white/92">{error.code === "PRIVATE" ? "Playlist private hai" : "Playlist fetch nahi hui"}</h3>
             <p className="mt-0.5 text-sm leading-relaxed text-white/62">{error.error}</p>
             {error.code === "PRIVATE" ? (
               <p className="mt-2 text-xs leading-relaxed text-[color:var(--color-amber)]">
@@ -189,7 +332,7 @@ export default function MyPlaylistClient() {
       ) : null}
 
       {state === "done" && playlist ? (
-        <div className="mt-8">
+        <div ref={resultRef} className="mt-8 scroll-mt-32">
           <section className="my-playlist-hero fade-up">
             <div className="my-playlist-cover" aria-hidden>
               {playlist.thumbnail ? (
@@ -200,7 +343,7 @@ export default function MyPlaylistClient() {
               )}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="eyebrow">Fetched from YouTube</p>
+              <p className="eyebrow">Saved in your playlist shelf</p>
               <h2 className="line-2 mt-1.5 text-2xl font-extrabold tracking-tight sm:text-3xl">{playlist.title}</h2>
               <p className="mt-1 line-1 text-sm text-white/55">
                 {playlist.channel ? `${playlist.channel} · ` : ""}{playlist.songs.length} {playlist.songs.length === 1 ? "song" : "songs"}

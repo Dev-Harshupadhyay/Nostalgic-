@@ -109,9 +109,10 @@ titles/channels (`&amp;`, `&#39;`) are decoded before display.
 fetches a caller-supplied host: it extracts and validates the ID, then reads YouTube itself. When
 `YOUTUBE_API_KEY` is available, the official playlist endpoints supply the data and validate that
 the playlist visibility is `public`. Without a key, the server parses YouTube's public playlist
-page. The browser receives normalized `Song[]` only; no imported playlist is stored by the app.
-Private, unavailable and Watch Later lists return an explicit instruction to change visibility to
-**Public**. The first 100 playable videos are supported.
+page. The browser receives normalized `Song[]` only. A successful import is saved in that visitor's
+localStorage (maximum 12 playlists) so their personal playlist shelf survives reloads; nothing is
+stored by the app server. Private, unavailable and Watch Later lists return an explicit instruction
+to change visibility to **Public**. The first 100 playable videos are supported.
 
 ### Search UX
 

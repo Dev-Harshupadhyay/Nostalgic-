@@ -3815,3 +3815,154 @@ h1, h2, h3, h4 {
   .pay-pop .pay-pop-qr { height: 8.6rem; width: 8.6rem; }
   .pay-pop-primary { padding-block: 0.72rem; font-size: 0.68rem; }
 }
+
+/* -------------------- My Playlist: saved device playlist shelf -------------------- */
+.my-saved-playlists {
+  position: relative;
+  margin-top: 1.35rem;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 25px;
+  background: linear-gradient(135deg, rgba(28, 18, 35, 0.76), rgba(11, 13, 22, 0.86));
+  padding: 1.15rem;
+  box-shadow: 0 20px 48px -36px rgba(0, 0, 0, 0.95), inset 0 1px rgba(255, 255, 255, 0.045);
+}
+.my-saved-playlists::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  right: 6%;
+  top: 0;
+  height: 2px;
+  width: 28%;
+  background: linear-gradient(90deg, transparent, rgba(119, 209, 255, 0.78), transparent);
+  box-shadow: 0 0 18px rgba(89, 185, 255, 0.8);
+}
+.my-saved-playlists-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.my-saved-playlists-count {
+  flex: 0 0 auto;
+  border: 1px solid rgba(112, 207, 255, 0.26);
+  border-radius: 999px;
+  background: rgba(67, 150, 255, 0.1);
+  padding: 0.34rem 0.62rem;
+  color: rgba(185, 229, 255, 0.86);
+  font-size: 0.67rem;
+  font-weight: 700;
+}
+.my-saved-playlists-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 0.7rem;
+}
+.saved-playlist-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.035);
+  box-shadow: 0 14px 30px -25px rgba(0, 0, 0, 0.94);
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), border-color 220ms ease, box-shadow 220ms ease;
+}
+.saved-playlist-card:hover {
+  z-index: 1;
+  transform: translateY(-3px);
+  border-color: rgba(103, 204, 255, 0.46);
+  box-shadow: 0 20px 38px -24px rgba(0, 0, 0, 0.98), 0 0 30px -18px rgba(90, 174, 255, 0.7);
+}
+.saved-playlist-main { display: block; width: 100%; text-align: left; }
+.saved-playlist-art {
+  position: relative;
+  display: grid;
+  aspect-ratio: 16 / 9;
+  place-items: center;
+  overflow: hidden;
+  background: linear-gradient(135deg, #e8a33d, #b54b86 53%, #1e376b);
+  color: #fff;
+  font-size: 1.85rem;
+}
+.saved-playlist-art img { height: 100%; width: 100%; object-fit: cover; transition: transform 500ms ease; }
+.saved-playlist-card:hover .saved-playlist-art img { transform: scale(1.07); }
+.saved-playlist-art-shade { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 25%, rgba(3, 7, 15, 0.76)); }
+.saved-playlist-open {
+  position: absolute;
+  right: 0.55rem;
+  bottom: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  background: rgba(5, 9, 18, 0.66);
+  padding: 0.27rem 0.5rem;
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 800;
+  backdrop-filter: blur(7px);
+}
+.saved-playlist-copy { display: block; padding: 0.7rem 2.35rem 0.4rem 0.75rem; }
+.saved-playlist-title { display: block; color: rgba(255, 255, 255, 0.93); font-size: 0.82rem; font-weight: 800; }
+.saved-playlist-channel { display: block; margin-top: 0.14rem; color: rgba(255, 255, 255, 0.48); font-size: 0.68rem; }
+.saved-playlist-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  padding: 0.15rem 0.55rem 0.6rem 0.75rem;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.62rem;
+}
+.saved-playlist-play {
+  display: grid;
+  height: 1.85rem;
+  width: 1.85rem;
+  place-items: center;
+  border: 1px solid rgba(88, 206, 255, 0.42);
+  border-radius: 999px;
+  color: #75e0ff;
+  background: rgba(55, 169, 255, 0.11);
+  transition: 180ms ease;
+}
+.saved-playlist-play:hover { color: #fff; background: #258ff5; box-shadow: 0 5px 14px -6px #258ff5; }
+.saved-playlist-remove {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.45rem;
+  display: grid;
+  height: 1.85rem;
+  width: 1.85rem;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.72);
+  background: rgba(5, 8, 14, 0.66);
+  backdrop-filter: blur(7px);
+  opacity: 0;
+  transition: 180ms ease;
+}
+.saved-playlist-card:hover .saved-playlist-remove,
+.saved-playlist-card:focus-within .saved-playlist-remove { opacity: 1; }
+.saved-playlist-remove:hover { border-color: rgba(236, 105, 129, 0.58); background: rgba(218, 74, 102, 0.8); color: #fff; }
+.my-saved-playlists-empty {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  border-radius: 17px;
+  background: rgba(255, 255, 255, 0.025);
+  padding: 1rem;
+}
+@media (max-width: 520px) {
+  .my-saved-playlists { border-radius: 20px; padding: 0.9rem; }
+  .my-saved-playlists-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.55rem; }
+  .saved-playlist-copy { padding: 0.58rem 0.4rem 0.25rem 0.58rem; }
+  .saved-playlist-title { font-size: 0.72rem; }
+  .saved-playlist-channel { font-size: 0.6rem; }
+  .saved-playlist-meta { padding: 0.1rem 0.4rem 0.45rem 0.58rem; font-size: 0.56rem; }
+  .saved-playlist-remove { opacity: 1; height: 1.65rem; width: 1.65rem; top: 0.3rem; right: 0.3rem; }
+  .my-saved-playlists-empty { align-items: flex-start; }
+}
