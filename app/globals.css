@@ -3601,7 +3601,7 @@ h1, h2, h3, h4 {
 }
 
 /* ---------------------- Telegram: gentle 5 second notice ---------------------- */
-.tg-pop-back {
+.pay-pop-back {
   position: fixed;
   inset: 0;
   z-index: 120;
@@ -3612,9 +3612,9 @@ h1, h2, h3, h4 {
   backdrop-filter: blur(9px);
   -webkit-backdrop-filter: blur(9px);
 }
-.tg-pop-in { animation: tg-back-in 220ms ease-out both; }
-@keyframes tg-back-in { from { opacity: 0; } to { opacity: 1; } }
-.tg-pop {
+.pay-pop-in { animation: pay-back-in 220ms ease-out both; }
+@keyframes pay-back-in { from { opacity: 0; } to { opacity: 1; } }
+.pay-pop {
   position: relative;
   width: min(100%, 31rem);
   overflow: hidden;
@@ -3623,17 +3623,17 @@ h1, h2, h3, h4 {
   background: linear-gradient(145deg, #151923 0%, #0b0e15 72%);
   padding: 1.65rem 1.35rem 1.2rem;
   box-shadow: 0 38px 100px -28px rgba(0, 0, 0, 0.97), 0 0 86px -34px rgba(68, 150, 255, 0.78);
-  animation: tg-sheet-in 340ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: pay-sheet-in 340ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
-@keyframes tg-sheet-in { from { opacity: 0; transform: translateY(18px) scale(0.975); } to { opacity: 1; transform: translateY(0) scale(1); } }
-.tg-pop-glow {
+@keyframes pay-sheet-in { from { opacity: 0; transform: translateY(18px) scale(0.975); } to { opacity: 1; transform: translateY(0) scale(1); } }
+.pay-pop-glow {
   position: absolute;
   inset: -55% -25% auto;
   height: 17rem;
   background: radial-gradient(ellipse, rgba(46, 153, 255, 0.25), rgba(107, 68, 255, 0.1) 38%, transparent 68%);
   pointer-events: none;
 }
-.tg-pop-close {
+.pay-pop-close {
   position: absolute;
   z-index: 1;
   top: 1rem;
@@ -3648,8 +3648,8 @@ h1, h2, h3, h4 {
   background: rgba(255, 255, 255, 0.04);
   transition: 180ms ease;
 }
-.tg-pop-close:hover { color: #fff; background: rgba(255, 255, 255, 0.11); transform: rotate(90deg); }
-.tg-pop-kicker {
+.pay-pop-close:hover { color: #fff; background: rgba(255, 255, 255, 0.11); transform: rotate(90deg); }
+.pay-pop-kicker {
   display: flex;
   justify-content: center;
   gap: 0.6rem;
@@ -3658,8 +3658,8 @@ h1, h2, h3, h4 {
   font-weight: 800;
   letter-spacing: 0.31em;
 }
-.tg-pop-kicker span { text-shadow: 0 0 16px currentColor; }
-.tg-pop-title {
+.pay-pop-kicker span { text-shadow: 0 0 16px currentColor; }
+.pay-pop-title {
   margin-top: 1rem;
   color: #f4f5fb;
   font-size: clamp(1.65rem, 7vw, 2.15rem);
@@ -3667,7 +3667,7 @@ h1, h2, h3, h4 {
   line-height: 1.15;
   letter-spacing: -0.035em;
 }
-.tg-pop-join {
+.pay-pop-join {
   position: relative;
   display: flex;
   align-items: center;
@@ -3682,13 +3682,13 @@ h1, h2, h3, h4 {
   box-shadow: 0 16px 40px -16px rgba(26, 153, 255, 0.82), inset 0 1px rgba(255, 255, 255, 0.25);
   transition: transform 180ms ease, filter 180ms ease;
 }
-.tg-pop-join:hover { transform: translateY(-2px); filter: brightness(1.08); }
-.tg-pop-join strong, .tg-pop-join small { display: block; }
-.tg-pop-join strong { font-size: 0.95rem; letter-spacing: 0.08em; }
-.tg-pop-join small { margin-top: 0.15rem; font-size: 0.68rem; letter-spacing: 0.14em; opacity: 0.9; }
-.tg-pop-arrow { font-size: 2.1rem; line-height: 1; }
-.tg-pop-qr-label { margin-top: 1.5rem; color: rgba(255, 255, 255, 0.4); font-size: 0.65rem; font-weight: 700; letter-spacing: 0.3em; }
-.tg-pop-qr {
+.pay-pop-join:hover { transform: translateY(-2px); filter: brightness(1.08); }
+.pay-pop-join strong, .pay-pop-join small { display: block; }
+.pay-pop-join strong { font-size: 0.95rem; letter-spacing: 0.08em; }
+.pay-pop-join small { margin-top: 0.15rem; font-size: 0.68rem; letter-spacing: 0.14em; opacity: 0.9; }
+.pay-pop-arrow { font-size: 2.1rem; line-height: 1; }
+.pay-pop-qr-label { margin-top: 1.5rem; color: rgba(255, 255, 255, 0.4); font-size: 0.65rem; font-weight: 700; letter-spacing: 0.3em; }
+.pay-pop-qr {
   display: grid;
   height: 12.7rem;
   width: 12.7rem;
@@ -3701,11 +3701,11 @@ h1, h2, h3, h4 {
   padding: 0.45rem;
   box-shadow: 0 0 0 3px rgba(147, 101, 255, 0.18), 0 14px 32px -16px rgba(90, 70, 217, 0.92);
 }
-.tg-pop-qr img { height: 100%; width: 100%; border-radius: 11px; image-rendering: pixelated; }
-.tg-pop-bottom { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-top: 1rem; }
-.tg-pop-count { color: rgba(255, 255, 255, 0.38); font-size: 0.69rem; }
-.tg-pop-text-link { display: inline-flex; align-items: center; gap: 0.3rem; color: #50d8ff; font-size: 0.73rem; font-weight: 700; }
-.tg-pop-progress {
+.pay-pop-qr img { height: 100%; width: 100%; border-radius: 11px; image-rendering: pixelated; }
+.pay-pop-bottom { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-top: 1rem; }
+.pay-pop-count { color: rgba(255, 255, 255, 0.38); font-size: 0.69rem; }
+.pay-pop-text-link { display: inline-flex; align-items: center; gap: 0.3rem; color: #50d8ff; font-size: 0.73rem; font-weight: 700; }
+.pay-pop-progress {
   position: absolute;
   bottom: 0;
   left: 0;
@@ -3713,15 +3713,105 @@ h1, h2, h3, h4 {
   width: 100%;
   transform-origin: left;
   background: linear-gradient(90deg, #42d7ff, #8665ff);
-  animation: tg-countdown 5s linear forwards;
+  animation: pay-countdown 5s linear forwards;
 }
-@keyframes tg-countdown { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+@keyframes pay-countdown { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 @media (max-width: 420px) {
-  .tg-pop { border-radius: 25px; padding: 1.35rem 1rem 1rem; }
-  .tg-pop-kicker { font-size: 0.56rem; letter-spacing: 0.24em; }
-  .tg-pop-qr { height: 10.9rem; width: 10.9rem; }
-  .tg-pop-close { top: 0.75rem; right: 0.75rem; height: 2.35rem; width: 2.35rem; }
+  .pay-pop { border-radius: 25px; padding: 1.35rem 1rem 1rem; }
+  .pay-pop-kicker { font-size: 0.56rem; letter-spacing: 0.24em; }
+  .pay-pop-qr { height: 10.9rem; width: 10.9rem; }
+  .pay-pop-close { top: 0.75rem; right: 0.75rem; height: 2.35rem; width: 2.35rem; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .tg-pop-in, .tg-pop, .tg-pop-progress { animation: none; }
+  .pay-pop-in, .pay-pop, .pay-pop-progress { animation: none; }
+}
+
+/* Payment actions inside the blue/purple popup. */
+.pay-pop {
+  max-height: calc(100dvh - 1.4rem);
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.pay-pop-amounts {
+  display: flex;
+  justify-content: center;
+  gap: 0.45rem;
+  margin: 1rem 0 0.65rem;
+}
+.pay-pop-amounts button {
+  min-width: 4rem;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.055);
+  padding: 0.45rem 0.7rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.8rem;
+  font-weight: 800;
+  transition: 180ms ease;
+}
+.pay-pop-amounts button:hover { border-color: rgba(91, 214, 255, 0.7); color: #fff; }
+.pay-pop-amounts button.is-on {
+  border-color: rgba(111, 225, 255, 0.8);
+  background: linear-gradient(110deg, rgba(30, 184, 215, 0.86), rgba(67, 117, 248, 0.92));
+  color: #fff;
+  box-shadow: 0 8px 24px -12px rgba(41, 157, 255, 0.95);
+}
+.pay-pop-amounts small { margin-left: 0.2rem; font-size: 0.55rem; font-weight: 700; opacity: 0.84; }
+.pay-pop .pay-pop-qr-label { margin-top: 0.85rem; }
+.pay-pop .pay-pop-qr { height: 10.6rem; width: 10.6rem; margin-top: 0.6rem; }
+.pay-pop-primary {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  margin-top: 0.9rem;
+  border: 1px solid rgba(134, 230, 255, 0.58);
+  border-radius: 16px;
+  background: linear-gradient(100deg, #19b7d2, #2f88fb 67%, #6066ed);
+  padding: 0.82rem 0.9rem;
+  color: #fff;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.045em;
+  box-shadow: 0 14px 34px -15px rgba(35, 148, 255, 0.86), inset 0 1px rgba(255, 255, 255, 0.22);
+  transition: transform 180ms ease, filter 180ms ease;
+}
+.pay-pop-primary:hover { transform: translateY(-2px); filter: brightness(1.08); }
+.pay-pop-apps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.45rem; margin-top: 0.55rem; }
+.pay-pop-app {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 0.34rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.055);
+  padding: 0.52rem 0.25rem;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.68rem;
+  font-weight: 700;
+  transition: 180ms ease;
+}
+.pay-pop-app:hover { border-color: rgba(99, 215, 255, 0.6); color: #fff; background: rgba(55, 162, 255, 0.14); }
+.pay-pop-app-mark { display: grid; height: 1rem; width: 1rem; place-items: center; }
+.pay-pop-app-mark svg { max-height: 1rem; max-width: 1rem; }
+.pay-pop-bottom { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 0.25rem 0.65rem; margin-top: 0.75rem; }
+.pay-pop-copy, .pay-pop-later {
+  border-radius: 999px;
+  padding: 0.3rem 0.45rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  transition: 180ms ease;
+}
+.pay-pop-copy { justify-self: start; color: #55d9ff; }
+.pay-pop-copy:hover { background: rgba(75, 204, 255, 0.11); }
+.pay-pop-later { color: rgba(255, 255, 255, 0.48); }
+.pay-pop-later:hover { color: #fff; background: rgba(255, 255, 255, 0.08); }
+.pay-pop-bottom .pay-pop-count { grid-column: 1 / -1; text-align: center; }
+@media (max-width: 420px) {
+  .pay-pop .pay-pop-title { font-size: 1.55rem; }
+  .pay-pop .pay-pop-qr { height: 8.6rem; width: 8.6rem; }
+  .pay-pop-primary { padding-block: 0.72rem; font-size: 0.68rem; }
 }

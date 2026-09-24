@@ -22,7 +22,7 @@ Built with ❤️ by [Harsh](https://new-profotilo-flame.vercel.app/).
 | 🔎 **Search** | Debounced global search with skeleton, empty and error states |
 | 🎶 **My Playlist** | Paste a public YouTube playlist link, fetch up to 100 playable videos, then play, shuffle or queue the whole list |
 | ❤️ **Support Dev Harsh** | ₹25 default, ₹50 / ₹100 / custom amount, real UPI deep link |
-| ✈️ **Telegram notice** | One gentle official-channel QR notice per browser session; closes itself after five seconds |
+| 💳 **UPI support notice** | One gentle payment QR + UPI app notice per browser session; closes itself after five seconds |
 | 🛠️ **Developer Dashboard** | About, projects, portfolio and Timepass Premium links |
 
 ### Player

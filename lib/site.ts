@@ -10,11 +10,6 @@ export const SITE = {
   locale: "en_IN",
 };
 
-export const SOCIAL = {
-  telegramChannel: "https://t.me/TIMEPASS_BACKUP_1",
-  telegramHandle: "@TIMEPASS_BACKUP_1",
-};
-
 export const DEV = {
   name: "Harsh",
   fullName: "Harsh Dev",
