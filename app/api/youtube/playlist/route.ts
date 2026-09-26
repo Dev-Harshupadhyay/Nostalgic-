@@ -14,12 +14,17 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const url = (searchParams.get("url") ?? "").slice(0, 2000).trim();
   const max = Math.min(Math.max(Number(searchParams.get("max") ?? 100) || 100, 1), 100);
+  // fresh=1 comes from the UI's Refresh button and from re-opening a saved
+  // playlist: both must reflect songs the owner added seconds ago.
+  const force = searchParams.get("fresh") === "1";
 
   try {
-    const playlist = await getPublicPlaylist(url, max);
+    const playlist = await getPublicPlaylist(url, max, { force });
     return NextResponse.json(playlist, {
       headers: {
-        "Cache-Control": "public, s-maxage=900, stale-while-revalidate=1800",
+        "Cache-Control": force
+          ? "no-store"
+          : "public, s-maxage=900, stale-while-revalidate=1800",
       },
     });
   } catch (error) {

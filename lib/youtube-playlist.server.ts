@@ -454,12 +454,24 @@ async function playlistViaPublic(id: string, max: number): Promise<Omit<PublicPl
   };
 }
 
-/** Fetches up to 100 songs from one public YouTube playlist. */
-export async function getPublicPlaylist(input: string, max = MAX_ITEMS): Promise<PublicPlaylist> {
+/**
+ * Fetches up to 100 songs from one public YouTube playlist.
+ *
+ * A playlist is a moving target — its owner can add a song a minute from now.
+ * `force` skips the 15-minute memo so a Refresh in the UI really does re-read
+ * the playlist from YouTube instead of replaying a stale copy.
+ */
+export async function getPublicPlaylist(
+  input: string,
+  max = MAX_ITEMS,
+  options: { force?: boolean } = {}
+): Promise<PublicPlaylist> {
   const id = playlistIdFromInput(input);
   const limit = Math.min(Math.max(max, 1), MAX_ITEMS);
-  const cached = getCached(id, limit);
-  if (cached) return cached;
+  if (!options.force) {
+    const cached = getCached(id, limit);
+    if (cached) return cached;
+  }
 
   try {
     const viaApi = await playlistViaApi(id, limit);

@@ -95,6 +95,8 @@ export default function MyPlaylistClient() {
   const [savedView, setSavedView] = useState<SavedView>("grid");
   const [savedHydrated, setSavedHydrated] = useState(false);
   const [state, setState] = useState<State>("idle");
+  const [lastSynced, setLastSynced] = useState<number | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<PlaylistError | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const resultRef = useRef<HTMLDivElement>(null);
@@ -126,12 +128,12 @@ export default function MyPlaylistClient() {
     });
   };
 
-  const fetchPlaylist = async () => {
-    const value = url.trim();
+  const fetchPlaylist = async (override?: string, force = false) => {
+    const value = (override ?? url).trim();
     abortRef.current?.abort();
     const run = ++runRef.current;
     setError(null);
-    setPlaylist(null);
+    if (!force) setPlaylist(null);
 
     if (!value) {
       setState("error");
@@ -142,22 +144,32 @@ export default function MyPlaylistClient() {
 
     const controller = new AbortController();
     abortRef.current = controller;
-    setState("loading");
+    if (force) setRefreshing(true);
+    else setState("loading");
 
     try {
-      const response = await fetch(`/api/youtube/playlist?url=${encodeURIComponent(value)}&max=100`, {
-        signal: controller.signal,
-      });
+      const response = await fetch(
+        `/api/youtube/playlist?url=${encodeURIComponent(value)}&max=100${force ? "&fresh=1" : ""}`,
+        { signal: controller.signal, cache: force ? "no-store" : "default" }
+      );
       const data = (await response.json()) as Playlist & PlaylistError;
       if (run !== runRef.current) return;
       if (!response.ok) throw data;
       setPlaylist(data);
       setState("done");
       rememberPlaylist(data, value);
+      setLastSynced(Date.now());
+      setRefreshing(false);
       window.setTimeout(() => resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
     } catch (caught) {
       if ((caught as Error).name === "AbortError") return;
       if (run !== runRef.current) return;
+      setRefreshing(false);
+      /* A failed background refresh must not wipe the copy already on screen. */
+      if (force && playlist) {
+        notify("Playlist refresh nahi ho paayi — abhi purani list dikha rahe hain.");
+        return;
+      }
       const problem = caught as PlaylistError;
       setState("error");
       setError({
@@ -168,6 +180,12 @@ export default function MyPlaylistClient() {
     }
   };
 
+  /**
+   * Show the saved copy instantly so the page never flashes empty, then go
+   * straight back to YouTube for the current track list. Without this second
+   * step a playlist imported when it had two songs would show two songs
+   * forever, no matter how many the owner added later.
+   */
   const openSavedPlaylist = (saved: SavedPlaylist) => {
     abortRef.current?.abort();
     runRef.current += 1;
@@ -175,7 +193,14 @@ export default function MyPlaylistClient() {
     setPlaylist(saved);
     setError(null);
     setState("done");
+    setLastSynced(saved.savedAt);
     window.setTimeout(() => resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+    void fetchPlaylist(saved.url, true);
+  };
+
+  const refreshCurrent = () => {
+    const target = playlist ? url.trim() || playlist.id : url.trim();
+    if (target) void fetchPlaylist(target, true);
   };
 
   const changeSavedView = (view: SavedView) => {
@@ -371,6 +396,10 @@ export default function MyPlaylistClient() {
               <h2 className="line-2 mt-1.5 text-2xl font-extrabold tracking-tight sm:text-3xl">{playlist.title}</h2>
               <p className="mt-1 line-1 text-sm text-white/55">
                 {playlist.channel ? `${playlist.channel} · ` : ""}{playlist.songs.length} {playlist.songs.length === 1 ? "song" : "songs"}
+                {lastSynced ? ` · synced ${savedTime(lastSynced).toLowerCase()}` : ""}
+              </p>
+              <p className="mt-1 text-[0.72rem] text-white/38">
+                Yeh list har baar YouTube se live padhi jaati hai — naya song add karke Refresh dabaiye.
               </p>
               <div className="mt-5 flex flex-wrap gap-2.5">
                 <GlowButton size="lg" aura onClick={() => playQueue(playlist.songs, 0)} disabled={!playlist.songs.length}>
@@ -381,6 +410,16 @@ export default function MyPlaylistClient() {
                 </button>
                 <button type="button" onClick={() => playlist.songs.forEach((song) => addToQueue(song))} disabled={!playlist.songs.length} className="btn btn-ghost px-4 py-2.5 text-sm disabled:opacity-45">
                   <Queue size={16} /> Add all to queue
+                </button>
+                <button
+                  type="button"
+                  onClick={refreshCurrent}
+                  disabled={refreshing}
+                  className="btn btn-ghost px-4 py-2.5 text-sm disabled:opacity-45"
+                  aria-label="Refresh this playlist from YouTube"
+                >
+                  {refreshing ? <Spinner size={16} /> : <span aria-hidden>↻</span>}
+                  {refreshing ? "Refreshing…" : "Refresh"}
                 </button>
               </div>
             </div>
