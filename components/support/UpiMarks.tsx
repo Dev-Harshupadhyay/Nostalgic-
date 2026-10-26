@@ -117,3 +117,29 @@ export function PaytmMark({ className = "" }: MarkProps) {
     </svg>
   );
 }
+
+export function RazorpayMark({ className = "" }: MarkProps) {
+  return (
+    <svg
+      viewBox="0 0 92 24"
+      role="img"
+      aria-label="Razorpay"
+      className={className}
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path d="M10.5 3L4 14.5h5.2L7.2 21 17 9.2h-5.3L14.5 3h-4z" fill="#3395FF" />
+      <text
+        x="21"
+        y="17"
+        fontFamily="system-ui, -apple-system, Segoe UI, sans-serif"
+        fontSize="12"
+        fontWeight="700"
+        fill="currentColor"
+      >
+        Razorpay
+      </text>
+    </svg>
+  );
+}
+

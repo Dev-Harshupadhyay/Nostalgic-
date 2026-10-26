@@ -4,27 +4,28 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 import {
   SUPPORT,
-  DEV,
   UPI_APPS,
   buildUpiLink,
   buildAppUpiLink,
   buildAndroidIntent,
 } from "@/lib/site";
-import { GPayMark, PhonePeMark, PaytmMark, UpiMark } from "@/components/support/UpiMarks";
+import {
+  GPayMark,
+  PhonePeMark,
+  PaytmMark,
+  UpiMark,
+  RazorpayMark,
+} from "@/components/support/UpiMarks";
 import { usePlayer } from "@/components/player/PlayerProvider";
 import { useUser } from "@/components/user/UserProvider";
-import { Close } from "@/components/ui/Icons";
+import { Close, ExternalLink } from "@/components/ui/Icons";
+import { startRazorpayCheckout } from "@/lib/razorpay-client";
 
 const SEEN_KEY = "nostalgic-support-pop-v3";
 const AUTO_CLOSE_MS = 5000;
 
 /**
- * Site-wide UPI support popup.
- *
- * The content is deliberately payment-first: an amount-aware UPI QR, a normal
- * "any UPI app" button and direct GPay / PhonePe / Paytm options. Its visual
- * treatment is the blue/purple card style requested for the Telegram reference,
- * but every action remains a real payment hand-off, not a Telegram promotion.
+ * Site-wide UPI + Razorpay support popup.
  */
 export default function SupportPop() {
   const { notify } = usePlayer();
@@ -33,6 +34,8 @@ export default function SupportPop() {
   const [amount, setAmount] = useState<number>(SUPPORT.defaultAmount);
   const [qr, setQr] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [processing, setProcessing] = useState(false);
+  const [interacted, setInteracted] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const lastFocus = useRef<HTMLElement | null>(null);
   const armed = useRef(false);
@@ -55,9 +58,9 @@ export default function SupportPop() {
     lastFocus.current?.focus?.();
   }, []);
 
-  /* The small notice disappears by itself so it never blocks listening. */
+  /* The small notice disappears by itself unless the user is interacting with payment. */
   useEffect(() => {
-    if (!open) return;
+    if (!open || interacted || processing) return;
     const timer = window.setTimeout(close, AUTO_CLOSE_MS);
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") close();
@@ -68,7 +71,7 @@ export default function SupportPop() {
       window.clearTimeout(timer);
       document.removeEventListener("keydown", onKey);
     };
-  }, [open, close]);
+  }, [open, close, interacted, processing]);
 
   /* The QR is the exact same UPI payload as the payment buttons. */
   useEffect(() => {
@@ -92,6 +95,7 @@ export default function SupportPop() {
   }, [open, amount]);
 
   const copyUpi = async () => {
+    setInteracted(true);
     try {
       await navigator.clipboard.writeText(SUPPORT.upiId);
       setCopied(true);
@@ -102,14 +106,37 @@ export default function SupportPop() {
     }
   };
 
+  const payWithRazorpay = async () => {
+    setInteracted(true);
+    setProcessing(true);
+    try {
+      await startRazorpayCheckout({
+        amountRupees: amount,
+        customerName: name || undefined,
+        onSuccess: ({ amountRupees }) => {
+          notify(`Payment of ₹${amountRupees} verified! Thank you ❤️`);
+          close();
+        },
+        onDismiss: (message) => {
+          notify(message);
+        },
+        onError: (message) => {
+          notify(message);
+        },
+      });
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   /** Sends the visitor to their installed UPI app; the app itself confirms payment. */
   const pay = (app: "any" | "gpay" | "phonepe" | "paytm" = "any") => {
+    setInteracted(true);
     const isMobile =
       window.matchMedia("(pointer: coarse)").matches || window.innerWidth < 820;
 
     if (!isMobile) {
-      copyUpi();
-      notify("Desktop par UPI app nahi khulti — QR scan karein ya UPI ID copy kar lein.");
+      payWithRazorpay();
       return;
     }
 
@@ -126,8 +153,8 @@ export default function SupportPop() {
       if (!document.hidden) {
         notify(
           app === "any"
-            ? "Koi UPI app nahi mili? QR scan karein ya UPI ID copy karke pay karein."
-            : "Ye app nahi mili — 'Koi bhi UPI app' try karein."
+            ? "Koi UPI app nahi mili? Razorpay button ya QR scan use karein."
+            : "Ye app nahi mili — 'Razorpay' ya 'Koi bhi UPI app' try karein."
         );
       }
     }, 1800);
@@ -161,7 +188,7 @@ export default function SupportPop() {
             {name ? `${name}, support Dev Harsh` : "Support Dev Harsh"}
           </h2>
           <p id="support-pop-desc" className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-white/58">
-            Agar music experience pasand aaya ho, ek chai jitna support kaafi hai. Payment sirf aapki UPI app confirm karegi.
+            Agar music experience pasand aaya ho, ek chai jitna support kaafi hai. Razorpay ya UPI se pay karein.
           </p>
 
           <div className="pay-pop-amounts" role="group" aria-label="Support amount">
@@ -169,7 +196,10 @@ export default function SupportPop() {
               <button
                 key={preset}
                 type="button"
-                onClick={() => setAmount(preset)}
+                onClick={() => {
+                  setInteracted(true);
+                  setAmount(preset);
+                }}
                 aria-pressed={amount === preset}
                 className={amount === preset ? "is-on" : ""}
               >
@@ -189,9 +219,14 @@ export default function SupportPop() {
           </div>
           <p className="mt-2 text-xs font-semibold text-white/70">{SUPPORT.payeeName} · {SUPPORT.upiId}</p>
 
-          <button type="button" onClick={() => pay("any")} className="pay-pop-primary">
-            <UpiMark className="h-4 w-9" />
-            PAY ₹{amount} · KOI BHI UPI APP <span aria-hidden>→</span>
+          <button
+            type="button"
+            onClick={payWithRazorpay}
+            disabled={processing}
+            className="pay-pop-primary"
+          >
+            <RazorpayMark className="h-4 w-auto" />
+            {processing ? "OPENING RAZORPAY…" : `PAY ₹${amount} · RAZORPAY / UPI`} <span aria-hidden>→</span>
           </button>
 
           <div className="pay-pop-apps" role="group" aria-label="Pay with a UPI app">
@@ -207,15 +242,31 @@ export default function SupportPop() {
             ))}
           </div>
 
+          <div className="mt-2.5">
+            <a
+              href={SUPPORT.razorpayLink}
+              target="_blank"
+              rel="noopener noreferrer external"
+              onClick={() => setInteracted(true)}
+              className="pay-pop-text-link"
+            >
+              <UpiMark className="h-3.5 w-auto" />
+              Universal Link: {SUPPORT.razorpayLink}
+              <ExternalLink size={12} />
+            </a>
+          </div>
+
           <div className="pay-pop-bottom">
             <button type="button" onClick={copyUpi} className="pay-pop-copy">
               {copied ? "✓ UPI ID copied" : "Copy UPI ID"}
             </button>
             <button type="button" onClick={close} className="pay-pop-later">Abhi nahi</button>
-            <span className="pay-pop-count">Auto closes in 5 seconds</span>
+            {!interacted ? (
+              <span className="pay-pop-count">Auto closes in 5 seconds</span>
+            ) : null}
           </div>
         </div>
-        <span className="pay-pop-progress" aria-hidden />
+        {!interacted ? <span className="pay-pop-progress" aria-hidden /> : null}
       </div>
     </div>
   );

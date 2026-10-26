@@ -4,34 +4,52 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import GlowButton from "@/components/ui/GlowButton";
 import { SUPPORT, DEV, buildUpiLink } from "@/lib/site";
 import { usePlayer } from "@/components/player/PlayerProvider";
-import { UpiMark, GPayMark, PhonePeMark, PaytmMark } from "@/components/support/UpiMarks";
+import { useUser } from "@/components/user/UserProvider";
+import {
+  UpiMark,
+  GPayMark,
+  PhonePeMark,
+  PaytmMark,
+  RazorpayMark,
+} from "@/components/support/UpiMarks";
 import QrModal from "@/components/support/QrModal";
+import { startRazorpayCheckout } from "@/lib/razorpay-client";
+import { ExternalLink } from "@/components/ui/Icons";
 
 const HEADLINE = "Support Dev Harsh";
 const SUBLINE = ["Ek", "chai", "ke", "paise,", "bahut", "saara", "code."];
 
+type PaymentFeedback = {
+  type: "success" | "error" | "info";
+  message: string;
+  paymentId?: string;
+  orderId?: string;
+} | null;
+
 /**
  * Home-page support spotlight.
  *
- * Same honest UPI behaviour as SupportCard — we only ever open the user's UPI
- * app via a standard deep link and never claim a payment succeeded. This is the
- * louder, more visual presentation used on the landing page.
+ * Supports Razorpay Standard Web Checkout (Order creation + Modal + HMAC-SHA256
+ * verification), direct UPI deep-links / QR code, and the universal Razorpay
+ * payment link (https://razorpay.me/@pmharsh).
  */
 export default function SupportSpotlight() {
   const { notify } = usePlayer();
+  const { name: userName } = useUser();
   const [amount, setAmount] = useState<number>(SUPPORT.defaultAmount);
   const [custom, setCustom] = useState("");
   const [customMode, setCustomMode] = useState(false);
   const [copied, setCopied] = useState(false);
   const [visible, setVisible] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
+  const [processing, setProcessing] = useState(false);
+  const [feedback, setFeedback] = useState<PaymentFeedback>(null);
   /** null until measured, so we never render the wrong CTA during hydration. */
   const [isMobile, setIsMobile] = useState<boolean | null>(null);
   const sectionRef = useRef<HTMLElement>(null);
 
   /* Decide which payment path to offer. `upi://` only resolves on a device that
-     has a UPI app installed, so desktop gets a scannable QR instead. Coarse
-     pointer + narrow viewport is a better signal here than user-agent sniffing. */
+     has a UPI app installed, so desktop gets a scannable QR instead. */
   useEffect(() => {
     const check = () =>
       setIsMobile(
@@ -66,10 +84,49 @@ export default function SupportSpotlight() {
   const effective = useMemo(() => {
     if (!customMode) return amount;
     const n = Number(custom);
-    return Number.isFinite(n) && n > 0 ? Math.min(Math.round(n), 100000) : 0;
+    return Number.isFinite(n) && n >= 1 ? Math.min(Math.round(n), 100000) : 0;
   }, [amount, custom, customMode]);
 
-  const valid = effective > 0;
+  const valid = effective >= 1;
+
+  const payWithRazorpay = async () => {
+    if (!valid) {
+      const msg = "Minimum amount is ₹1 (100 paise). Pehle ek valid amount daaliye.";
+      setFeedback({ type: "error", message: msg });
+      notify(msg);
+      return;
+    }
+
+    setProcessing(true);
+    setFeedback(null);
+
+    try {
+      await startRazorpayCheckout({
+        amountRupees: effective,
+        customerName: userName || undefined,
+        onSuccess: ({ paymentId, orderId, amountRupees }) => {
+          const msg = `Payment of ₹${amountRupees} verified! Thank you for supporting ${DEV.fullName} ❤️`;
+          setFeedback({
+            type: "success",
+            message: msg,
+            paymentId,
+            orderId,
+          });
+          notify(msg);
+        },
+        onDismiss: (message) => {
+          setFeedback({ type: "info", message });
+          notify(message);
+        },
+        onError: (message) => {
+          setFeedback({ type: "error", message });
+          notify(message);
+        },
+      });
+    } finally {
+      setProcessing(false);
+    }
+  };
 
   const pay = () => {
     if (!valid) {
@@ -83,7 +140,7 @@ export default function SupportSpotlight() {
     }
     window.location.href = buildUpiLink(effective);
     window.setTimeout(() => {
-      notify("Opening your UPI app… if nothing happens, copy the UPI ID.");
+      notify("Opening your UPI app… if nothing happens, use Razorpay Checkout or copy the UPI ID.");
     }, 1400);
   };
 
@@ -149,6 +206,9 @@ export default function SupportSpotlight() {
             <span className="eyebrow">Works with</span>
             <ul className="mt-2.5 flex flex-wrap items-center gap-2">
               <li className="sp-chip">
+                <RazorpayMark className="h-[18px] w-auto" />
+              </li>
+              <li className="sp-chip">
                 <UpiMark className="h-[18px] w-auto" />
               </li>
               <li className="sp-chip">
@@ -178,6 +238,7 @@ export default function SupportSpotlight() {
                   onClick={() => {
                     setCustomMode(false);
                     setAmount(p);
+                    setFeedback(null);
                   }}
                   aria-pressed={active}
                   className={`btn sp-pill px-5 py-2 text-sm ${active ? "btn-glow" : "btn-ghost"}`}
@@ -188,7 +249,10 @@ export default function SupportSpotlight() {
             })}
             <button
               type="button"
-              onClick={() => setCustomMode(true)}
+              onClick={() => {
+                setCustomMode(true);
+                setFeedback(null);
+              }}
               aria-pressed={customMode}
               className={`btn sp-pill px-5 py-2 text-sm ${customMode ? "btn-glow" : "btn-ghost"}`}
             >
@@ -210,15 +274,39 @@ export default function SupportSpotlight() {
                   min={1}
                   max={100000}
                   value={custom}
-                  onChange={(e) => setCustom(e.target.value)}
-                  placeholder="Enter amount"
-                  className="w-28 bg-transparent text-sm text-white outline-none placeholder:text-white/30"
+                  onChange={(e) => {
+                    setCustom(e.target.value);
+                    setFeedback(null);
+                  }}
+                  placeholder="Enter amount (min ₹1)"
+                  className="w-36 bg-transparent text-sm text-white outline-none placeholder:text-white/30"
                 />
               </div>
               {custom && !valid ? (
                 <span className="text-xs text-[color:var(--color-rose)]" role="alert">
-                  Enter a valid amount
+                  Minimum amount is ₹1 (100 paise)
                 </span>
+              ) : null}
+            </div>
+          ) : null}
+
+          {feedback ? (
+            <div
+              role={feedback.type === "error" ? "alert" : "status"}
+              aria-live="polite"
+              className={`mt-4 rounded-2xl border px-3.5 py-2.5 text-xs leading-relaxed ${
+                feedback.type === "success"
+                  ? "border-[#4fb3a5]/50 bg-[#4fb3a5]/12 text-[#b8f3ea]"
+                  : feedback.type === "error"
+                    ? "border-[color:var(--color-rose)]/50 bg-[color:var(--color-rose)]/12 text-[#ffc2cc]"
+                    : "border-white/15 bg-white/6 text-white/75"
+              }`}
+            >
+              <p className="font-semibold">{feedback.message}</p>
+              {feedback.paymentId ? (
+                <p className="mt-0.5 font-mono text-[0.65rem] opacity-80">
+                  Payment ID: {feedback.paymentId}
+                </p>
               ) : null}
             </div>
           ) : null}
@@ -228,22 +316,31 @@ export default function SupportSpotlight() {
               <GlowButton
                 size="lg"
                 aura
-                onClick={pay}
-                disabled={!valid}
+                onClick={payWithRazorpay}
+                disabled={!valid || processing}
                 className="w-full justify-center"
-                aria-label={
-                  isMobile === false
-                    ? `Show QR code to pay ₹${effective || 0} to ${DEV.fullName}`
-                    : `Support ${DEV.fullName} with ₹${effective || 0} via UPI`
-                }
+                aria-label={`Pay ₹${effective || 0} with Razorpay Checkout`}
               >
-                <span aria-hidden>{isMobile === false ? "📱" : "❤️"}</span>
-                {isMobile === false ? `Show QR · ₹${effective || 0}` : `Pay ₹${effective || 0} via UPI`}
+                <RazorpayMark className="h-[18px] w-auto" />
+                {processing ? "Opening Razorpay…" : `Pay ₹${effective || 0} · Razorpay`}
               </GlowButton>
             </span>
 
-            {/* Mobile also gets a QR route: some people pay from a second phone,
-                or their UPI app is not the default handler for upi:// links. */}
+            <button
+              type="button"
+              onClick={pay}
+              disabled={!valid}
+              className="btn btn-ghost w-full justify-center px-5 py-2.5 text-sm disabled:opacity-45"
+              aria-label={
+                isMobile === false
+                  ? `Show QR code to pay ₹${effective || 0} to ${DEV.fullName}`
+                  : `Support ${DEV.fullName} with ₹${effective || 0} via UPI app`
+              }
+            >
+              <UpiMark className="h-[15px] w-auto" />
+              {isMobile === false ? `Show UPI QR · ₹${effective || 0}` : `Pay ₹${effective || 0} via UPI App`}
+            </button>
+
             {isMobile ? (
               <button
                 type="button"
@@ -304,16 +401,53 @@ export default function SupportSpotlight() {
             </button>
           </div>
 
+          {/* Universal Razorpay link right below the UPI buttons */}
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-[#3395FF]/25 bg-[#3395FF]/[0.07] px-3.5 py-2.5">
+            <div className="flex min-w-0 items-center gap-2">
+              <RazorpayMark className="h-[16px] w-auto shrink-0 text-white" />
+              <div className="min-w-0">
+                <p className="text-[0.6rem] font-bold uppercase tracking-[0.15em] text-[#7ab8ff]">
+                  Universal Link
+                </p>
+                <a
+                  href={SUPPORT.razorpayLink}
+                  target="_blank"
+                  rel="noopener noreferrer external"
+                  className="line-1 inline-flex items-center gap-1 text-xs font-semibold text-white/90 underline decoration-[#3395FF]/50 underline-offset-4 hover:text-[color:var(--color-amber)]"
+                >
+                  {SUPPORT.razorpayLink}
+                  <ExternalLink size={11} className="shrink-0 opacity-75" />
+                </a>
+              </div>
+            </div>
+            <a
+              href={SUPPORT.razorpayLink}
+              target="_blank"
+              rel="noopener noreferrer external"
+              className="btn btn-ghost px-3 py-1 text-[0.72rem] font-semibold text-white/90 hover:border-[#3395FF]/50"
+            >
+              Pay @pmharsh
+              <ExternalLink size={11} />
+            </a>
+          </div>
+
           {isMobile === false ? (
             <p className="mt-3 text-center text-[0.72rem] text-white/45">
-              Desktop par ho — QR scan kariye apne phone ke UPI app se 📱
+              Desktop par ho — Razorpay se turant pay karein ya QR scan kariye 📱
             </p>
           ) : null}
 
-          <p className="mt-4 text-[0.7rem] leading-relaxed text-white/38">
-            “Pay” aapka UPI app kholta hai (GPay, PhonePe, Paytm…) amount pehle se bhara hua. Ye site
-            koi payment process ya store nahi karti — transaction sirf aapka UPI app confirm kar
-            sakta hai. Desktop par UPI ID copy karke phone se pay kar lijiye.
+          <p className="mt-3 text-[0.7rem] leading-relaxed text-white/38">
+            Razorpay Standard Checkout (UPI, Cards, NetBanking), direct UPI app, QR scan, ya{" "}
+            <a
+              href={SUPPORT.razorpayLink}
+              target="_blank"
+              rel="noopener noreferrer external"
+              className="text-white/60 underline underline-offset-2 hover:text-[color:var(--color-amber)]"
+            >
+              {SUPPORT.razorpayLink}
+            </a>{" "}
+            se support kar sakte hain.
           </p>
         </div>
       </div>

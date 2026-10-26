@@ -3,8 +3,15 @@
 import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { SUPPORT, DEV, buildUpiLink } from "@/lib/site";
-import { Close } from "@/components/ui/Icons";
-import { UpiMark, GPayMark, PhonePeMark, PaytmMark } from "@/components/support/UpiMarks";
+import { Close, ExternalLink } from "@/components/ui/Icons";
+import {
+  UpiMark,
+  GPayMark,
+  PhonePeMark,
+  PaytmMark,
+  RazorpayMark,
+} from "@/components/support/UpiMarks";
+import { startRazorpayCheckout } from "@/lib/razorpay-client";
 
 type Props = {
   open: boolean;
@@ -17,13 +24,7 @@ type Props = {
 };
 
 /**
- * Desktop QR flow.
- *
- * A phone cannot be reached by `upi://` from a laptop, so instead we encode the
- * exact same UPI deep link into a QR the user scans with their phone's UPI app.
- * The QR is regenerated whenever the amount changes, so what you scan always
- * matches what is selected. As everywhere else, no payment is processed or
- * confirmed here — only the user's UPI app can do that.
+ * Desktop QR + Razorpay Checkout modal.
  */
 export default function QrModal({
   open,
@@ -37,17 +38,18 @@ export default function QrModal({
   const [custom, setCustom] = useState("");
   const [customMode, setCustomMode] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [processing, setProcessing] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
 
   const effective = customMode
     ? (() => {
         const n = Number(custom);
-        return Number.isFinite(n) && n > 0 ? Math.min(Math.round(n), 100000) : 0;
+        return Number.isFinite(n) && n >= 1 ? Math.min(Math.round(n), 100000) : 0;
       })()
     : amount;
 
-  const valid = effective > 0;
+  const valid = effective >= 1;
   const upiLink = valid ? buildUpiLink(effective) : "";
 
   /* Re-encode whenever the amount changes. */
@@ -124,6 +126,31 @@ export default function QrModal({
     }
   };
 
+  const payWithRazorpay = async () => {
+    if (!valid) {
+      notify("Minimum amount is ₹1 (100 paise).");
+      return;
+    }
+    setProcessing(true);
+    try {
+      await startRazorpayCheckout({
+        amountRupees: effective,
+        onSuccess: ({ amountRupees }) => {
+          notify(`Payment of ₹${amountRupees} verified! Thank you ❤️`);
+          onClose();
+        },
+        onDismiss: (message) => {
+          notify(message);
+        },
+        onError: (message) => {
+          notify(message);
+        },
+      });
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   const pick = (p: number) => {
     setCustomMode(false);
     onAmountChange(p);
@@ -168,8 +195,7 @@ export default function QrModal({
             <span className="sp-shimmer">Support {DEV.fullName}</span>
           </h2>
           <p id="qr-desc" className="mx-auto mt-2 max-w-[19rem] text-[0.82rem] leading-relaxed text-white/58">
-            Apne phone ka UPI app kholiye aur ye QR scan kar lijiye — amount pehle se bhara hua
-            aayega.
+            Apne phone ka UPI app kholiye aur ye QR scan kar lijiye — ya neeche Razorpay se turant pay karein.
           </p>
 
           {/* -------------------------------- QR -------------------------------- */}
@@ -182,10 +208,10 @@ export default function QrModal({
                   alt={`UPI QR code to pay ₹${effective} to ${SUPPORT.upiId}`}
                   width={208}
                   height={208}
-                  className="h-52 w-52 rounded-xl"
+                  className="h-48 w-48 rounded-xl"
                 />
               ) : (
-                <div className="grid h-52 w-52 place-items-center rounded-xl bg-black/5">
+                <div className="grid h-48 w-48 place-items-center rounded-xl bg-black/5">
                   <span className="text-[0.75rem] font-semibold text-black/45">
                     {valid ? "Generating…" : "Enter an amount"}
                   </span>
@@ -200,7 +226,7 @@ export default function QrModal({
           <p className="text-[0.72rem] text-white/45">{SUPPORT.upiId}</p>
 
           {/* ----------------------------- Amounts ------------------------------ */}
-          <div className="mt-5">
+          <div className="mt-4">
             <span className="eyebrow">Change amount</span>
             <div
               className="mt-2 flex flex-wrap justify-center gap-2"
@@ -261,8 +287,18 @@ export default function QrModal({
 
           <button
             type="button"
+            onClick={payWithRazorpay}
+            disabled={!valid || processing}
+            className="btn btn-glow mt-4 w-full justify-center px-5 py-2.5 text-sm disabled:opacity-45"
+          >
+            <RazorpayMark className="h-[16px] w-auto" />
+            {processing ? "Opening Razorpay…" : `Pay ₹${effective || 0} with Razorpay`}
+          </button>
+
+          <button
+            type="button"
             onClick={copyUpi}
-            className={`btn btn-ghost sp-copy mt-4 w-full justify-center px-5 py-2.5 text-sm ${
+            className={`btn btn-ghost sp-copy mt-2.5 w-full justify-center px-5 py-2.5 text-sm ${
               copied ? "is-copied" : ""
             }`}
             aria-label={`Copy UPI ID ${SUPPORT.upiId}`}
@@ -292,7 +328,22 @@ export default function QrModal({
             )}
           </button>
 
-          <ul className="mt-4 flex flex-wrap items-center justify-center gap-1.5">
+          <div className="mt-3">
+            <a
+              href={SUPPORT.razorpayLink}
+              target="_blank"
+              rel="noopener noreferrer external"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#7ab8ff] underline decoration-[#3395FF]/50 underline-offset-4 hover:text-[color:var(--color-amber)]"
+            >
+              Universal Link: {SUPPORT.razorpayLink}
+              <ExternalLink size={12} />
+            </a>
+          </div>
+
+          <ul className="mt-3.5 flex flex-wrap items-center justify-center gap-1.5">
+            <li className="sp-chip">
+              <RazorpayMark className="h-[15px] w-auto" />
+            </li>
             <li className="sp-chip">
               <UpiMark className="h-[15px] w-auto" />
             </li>
@@ -306,11 +357,6 @@ export default function QrModal({
               <PaytmMark className="h-[15px] w-auto" />
             </li>
           </ul>
-
-          <p className="mt-4 text-[0.68rem] leading-relaxed text-white/38">
-            Ye site koi payment process ya store nahi karti — transaction sirf aapka UPI app confirm
-            kar sakta hai.
-          </p>
         </div>
       </div>
     </div>
