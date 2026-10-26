@@ -149,12 +149,6 @@ export async function startRazorpayCheckout({
     return;
   }
 
-  const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
-  if (!keyId) {
-    onError?.("Razorpay Key ID is not configured.");
-    return;
-  }
-
   const loaded = await ensureRazorpayCheckoutScript();
   if (!loaded || typeof window.Razorpay !== "function") {
     onError?.("Could not load Razorpay Checkout script. Please check your connection.");
@@ -165,6 +159,7 @@ export async function startRazorpayCheckout({
     order_id?: string;
     amount?: number;
     currency?: string;
+    key_id?: string;
     error?: string;
   };
 
@@ -189,6 +184,12 @@ export async function startRazorpayCheckout({
     onError?.(
       err instanceof Error ? err.message : "Network error while creating order."
     );
+    return;
+  }
+
+  const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || orderData.key_id;
+  if (!keyId) {
+    onError?.("Razorpay Key ID is not configured.");
     return;
   }
 
