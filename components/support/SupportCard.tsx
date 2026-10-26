@@ -10,27 +10,46 @@ import {
   buildAppUpiLink,
   buildAndroidIntent,
 } from "@/lib/site";
-import { GPayMark, PhonePeMark, PaytmMark } from "@/components/support/UpiMarks";
+import {
+  GPayMark,
+  PhonePeMark,
+  PaytmMark,
+  RazorpayMark,
+  UpiMark,
+} from "@/components/support/UpiMarks";
 import { usePlayer } from "@/components/player/PlayerProvider";
+import { useUser } from "@/components/user/UserProvider";
 import QrModal from "@/components/support/QrModal";
+import { startRazorpayCheckout } from "@/lib/razorpay-client";
+import { ExternalLink } from "@/components/ui/Icons";
 
 type Props = { compact?: boolean; hideHeading?: boolean };
 
+type PaymentFeedback = {
+  type: "success" | "error" | "info";
+  message: string;
+  paymentId?: string;
+  orderId?: string;
+} | null;
+
 /**
- * Support card with a real UPI deep link.
- *
- * Honest by design: we open the user's UPI app and we never claim a payment
- * succeeded — only their bank/UPI app can confirm that. No payment backend is
- * faked here; the structure is ready for a gateway if one is added later.
+ * Support card with:
+ * 1. Razorpay Standard Web Checkout (Order creation + Modal + HMAC-SHA256 verification)
+ * 2. Direct UPI deep links (GPay, PhonePe, Paytm, QR code, Copy UPI ID)
+ * 3. Razorpay Universal Payment Link below the UPI section (https://razorpay.me/@pmharsh)
  */
 export default function SupportCard({ compact = false, hideHeading = false }: Props) {
   const { notify } = usePlayer();
+  const { name: userName } = useUser();
   const [amount, setAmount] = useState<number>(SUPPORT.defaultAmount);
   const [custom, setCustom] = useState("");
   const [customMode, setCustomMode] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
   const [isMobile, setIsMobile] = useState<boolean | null>(null);
+  const [processing, setProcessing] = useState(false);
+  const [feedback, setFeedback] = useState<PaymentFeedback>(null);
 
   /* Desktop cannot hand off to a `upi://` app — offer a scannable QR instead. */
   useEffect(() => {
@@ -44,10 +63,53 @@ export default function SupportCard({ compact = false, hideHeading = false }: Pr
   const effective = useMemo(() => {
     if (!customMode) return amount;
     const n = Number(custom);
-    return Number.isFinite(n) && n > 0 ? Math.min(Math.round(n), 100000) : 0;
+    return Number.isFinite(n) && n >= 1 ? Math.min(Math.round(n), 100000) : 0;
   }, [amount, custom, customMode]);
 
-  const valid = effective > 0;
+  const valid = effective >= 1;
+
+  /**
+   * Opens Razorpay Standard Web Checkout modal (`POST /api/create-order` ->
+   * `window.Razorpay` -> `POST /api/verify-payment`).
+   */
+  const payWithRazorpay = async () => {
+    if (!valid) {
+      const msg = "Minimum amount is ₹1 (100 paise). Please enter a valid amount.";
+      setFeedback({ type: "error", message: msg });
+      notify(msg);
+      return;
+    }
+
+    setProcessing(true);
+    setFeedback(null);
+
+    try {
+      await startRazorpayCheckout({
+        amountRupees: effective,
+        customerName: userName || undefined,
+        onSuccess: ({ paymentId, orderId, amountRupees }) => {
+          const msg = `Payment of ₹${amountRupees} verified! Thank you for supporting ${DEV.fullName} ❤️`;
+          setFeedback({
+            type: "success",
+            message: msg,
+            paymentId,
+            orderId,
+          });
+          notify(msg);
+        },
+        onDismiss: (message) => {
+          setFeedback({ type: "info", message });
+          notify(message);
+        },
+        onError: (message) => {
+          setFeedback({ type: "error", message });
+          notify(message);
+        },
+      });
+    } finally {
+      setProcessing(false);
+    }
+  };
 
   /**
    * Deep-link into a UPI app. "any" uses the generic upi:// intent so the OS
@@ -56,7 +118,7 @@ export default function SupportCard({ compact = false, hideHeading = false }: Pr
    */
   const pay = (app: "any" | "gpay" | "phonepe" | "paytm" = "any") => {
     if (!valid) {
-      notify("Enter a valid amount first");
+      notify("Enter a valid amount first (minimum ₹1)");
       return;
     }
     if (!isMobile) {
@@ -73,7 +135,7 @@ export default function SupportCard({ compact = false, hideHeading = false }: Pr
 
     window.location.href = url;
     window.setTimeout(() => {
-      notify("Opening your UPI app… if nothing happens, copy the UPI ID.");
+      notify("Opening your UPI app… if nothing happens, use Razorpay Checkout or copy the UPI ID.");
     }, 1400);
   };
 
@@ -85,6 +147,17 @@ export default function SupportCard({ compact = false, hideHeading = false }: Pr
       window.setTimeout(() => setCopied(false), 2200);
     } catch {
       notify("Could not copy — UPI ID: " + SUPPORT.upiId);
+    }
+  };
+
+  const copyUniversalLink = async () => {
+    try {
+      await navigator.clipboard.writeText(SUPPORT.razorpayLink);
+      setCopiedLink(true);
+      notify("Razorpay link copied ❤️");
+      window.setTimeout(() => setCopiedLink(false), 2200);
+    } catch {
+      notify("Razorpay link: " + SUPPORT.razorpayLink);
     }
   };
 
@@ -130,12 +203,11 @@ export default function SupportCard({ compact = false, hideHeading = false }: Pr
                 onClick={() => {
                   setCustomMode(false);
                   setAmount(p);
+                  setFeedback(null);
                 }}
                 aria-pressed={active}
                 className={`btn px-5 py-2 text-sm ${
-                  active
-                    ? "btn-glow"
-                    : "btn-ghost"
+                  active ? "btn-glow" : "btn-ghost"
                 }`}
               >
                 ₹{p}
@@ -144,7 +216,10 @@ export default function SupportCard({ compact = false, hideHeading = false }: Pr
           })}
           <button
             type="button"
-            onClick={() => setCustomMode(true)}
+            onClick={() => {
+              setCustomMode(true);
+              setFeedback(null);
+            }}
             aria-pressed={customMode}
             className={`btn px-5 py-2 text-sm ${customMode ? "btn-glow" : "btn-ghost"}`}
           >
@@ -166,20 +241,46 @@ export default function SupportCard({ compact = false, hideHeading = false }: Pr
                 min={1}
                 max={100000}
                 value={custom}
-                onChange={(e) => setCustom(e.target.value)}
-                placeholder="Enter amount"
-                className="w-28 bg-transparent text-sm text-white outline-none placeholder:text-white/30"
+                onChange={(e) => {
+                  setCustom(e.target.value);
+                  setFeedback(null);
+                }}
+                placeholder="Enter amount (min ₹1)"
+                className="w-36 bg-transparent text-sm text-white outline-none placeholder:text-white/30"
               />
             </div>
             {custom && !valid ? (
               <span className="text-xs text-[color:var(--color-rose)]" role="alert">
-                Enter a valid amount
+                Minimum amount is ₹1 (100 paise)
               </span>
             ) : null}
           </div>
         ) : null}
       </div>
 
+      {/* Payment status / verification feedback */}
+      {feedback ? (
+        <div
+          role={feedback.type === "error" ? "alert" : "status"}
+          aria-live="polite"
+          className={`mt-4 rounded-2xl border px-4 py-3 text-xs leading-relaxed ${
+            feedback.type === "success"
+              ? "border-[#4fb3a5]/50 bg-[#4fb3a5]/12 text-[#b8f3ea]"
+              : feedback.type === "error"
+                ? "border-[color:var(--color-rose)]/50 bg-[color:var(--color-rose)]/12 text-[#ffc2cc]"
+                : "border-white/15 bg-white/6 text-white/75"
+          }`}
+        >
+          <p className="font-semibold">{feedback.message}</p>
+          {feedback.paymentId ? (
+            <p className="mt-1 font-mono text-[0.68rem] opacity-80">
+              Payment ID: {feedback.paymentId} · Order ID: {feedback.orderId}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {/* Mobile direct UPI app buttons */}
       {isMobile ? (
         <div className="upi-apps mt-5" role="group" aria-label="Pay with a UPI app">
           {UPI_APPS.map((a) => (
@@ -203,21 +304,35 @@ export default function SupportCard({ compact = false, hideHeading = false }: Pr
         </div>
       ) : null}
 
+      {/* Primary checkout + UPI actions */}
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <GlowButton
           size="lg"
           aura
+          onClick={payWithRazorpay}
+          disabled={!valid || processing}
+          aria-label={`Pay ₹${effective || 0} with Razorpay Checkout`}
+        >
+          <RazorpayMark className="h-[18px] w-auto" />
+          {processing
+            ? "Opening Razorpay…"
+            : `Pay ₹${effective || 0} · Razorpay`}
+        </GlowButton>
+
+        <button
+          type="button"
           onClick={() => pay("any")}
           disabled={!valid}
+          className="btn btn-ghost px-5 py-2.5 text-sm disabled:opacity-45"
           aria-label={
             isMobile === false
               ? `Show QR code to pay ₹${effective || 0} to ${DEV.fullName}`
-              : `Support ₹${effective || 0} via UPI`
+              : `Support ₹${effective || 0} via UPI app`
           }
         >
-          <span aria-hidden>{isMobile === false ? "📱" : "❤️"}</span>
-          {isMobile === false ? `Show QR · ₹${effective || 0}` : `Support ₹${effective || 0}`}
-        </GlowButton>
+          <UpiMark className="h-[15px] w-auto" />
+          {isMobile === false ? `Show UPI QR · ₹${effective || 0}` : `UPI App · ₹${effective || 0}`}
+        </button>
 
         {isMobile ? (
           <button
@@ -263,10 +378,60 @@ export default function SupportCard({ compact = false, hideHeading = false }: Pr
         </button>
       </div>
 
+      {/* Universal Razorpay link below the UPI section */}
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#3395FF]/25 bg-[#3395FF]/[0.07] px-4 py-3">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <RazorpayMark className="h-[18px] w-auto shrink-0 text-white" />
+          <div className="min-w-0">
+            <p className="text-[0.65rem] font-bold uppercase tracking-[0.16em] text-[#7ab8ff]">
+              Razorpay Universal Payment Link
+            </p>
+            <a
+              href={SUPPORT.razorpayLink}
+              target="_blank"
+              rel="noopener noreferrer external"
+              className="line-1 inline-flex items-center gap-1.5 text-xs font-semibold text-white/90 underline decoration-[#3395FF]/50 underline-offset-4 transition hover:text-[color:var(--color-amber)]"
+            >
+              {SUPPORT.razorpayLink}
+              <ExternalLink size={12} className="shrink-0 opacity-75" />
+            </a>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <a
+            href={SUPPORT.razorpayLink}
+            target="_blank"
+            rel="noopener noreferrer external"
+            className="btn btn-ghost px-3.5 py-1.5 text-xs font-semibold text-white/90 hover:border-[#3395FF]/50"
+          >
+            Open @pmharsh
+            <ExternalLink size={12} />
+          </a>
+          <button
+            type="button"
+            onClick={copyUniversalLink}
+            className="btn btn-ghost px-3.5 py-1.5 text-xs font-semibold text-white/75"
+            aria-label={`Copy Razorpay universal link ${SUPPORT.razorpayLink}`}
+          >
+            {copiedLink ? "✓ Link copied" : "Copy link"}
+          </button>
+        </div>
+      </div>
+
       <p className="mt-4 text-[0.7rem] leading-relaxed text-white/38">
-        Tapping “Support” opens your UPI app (GPay, PhonePe, Paytm…) with the amount pre-filled.
-        This site does not process or store any payment — only your UPI app can confirm a
-        transaction. On desktop, scan the QR with your phone or copy the UPI ID.
+        Pay securely via Razorpay Standard Checkout (UPI, Cards, NetBanking &amp; Wallets with
+        server-side HMAC-SHA256 verification), open your UPI app directly, scan the QR code, or use
+        the universal Razorpay link{" "}
+        <a
+          href={SUPPORT.razorpayLink}
+          target="_blank"
+          rel="noopener noreferrer external"
+          className="text-white/60 underline underline-offset-2 hover:text-[color:var(--color-amber)]"
+        >
+          {SUPPORT.razorpayLink}
+        </a>
+        .
       </p>
 
       <QrModal

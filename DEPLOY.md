@@ -1,27 +1,18 @@
 # Deploy
 
-**Live site: https://nostalgic-xwa6.onrender.com**
-Host: **Render** (free tier). Har `main` push par apne aap deploy ho jata hai.
+**Live site (Vercel): https://nostalgic-eight.vercel.app/**
+(Fallback Render URL: https://nostalgic-xwa6.onrender.com)
 
 ---
 
-## Render (current host)
-
-### Settings
-
-| Setting | Value |
-|---|---|
-| Environment | Node |
-| Build Command | `npm install && npm run build` |
-| Start Command | `npm start` |
-| Branch | `main` |
-| Node Version | 20 |
-
-### Environment Variables
+## Environment Variables (Vercel / Render)
 
 | Name | Value | Zaroori? |
 |---|---|---|
-| `NEXT_PUBLIC_SITE_URL` | `https://nostalgic-xwa6.onrender.com` | SEO/share preview ke liye |
+| `NEXT_PUBLIC_SITE_URL` | `https://nostalgic-eight.vercel.app` | SEO/share preview ke liye |
+| `RAZORPAY_KEY_ID` | `rzp_test_...` | Razorpay order creation (server-side) |
+| `RAZORPAY_KEY_SECRET` | (Secret Key) | Razorpay order & signature verification (server-only, never `NEXT_PUBLIC_`) |
+| `NEXT_PUBLIC_RAZORPAY_KEY_ID` | `rzp_test_...` | Frontend Razorpay Checkout modal ke liye |
 | `YOUTUBE_API_KEY` | (YouTube Data API v3 key) | **Optional** — abhi zaroorat nahi |
 
 `YOUTUBE_API_KEY` ke aage `NEXT_PUBLIC_` **kabhi mat lagana** — wo key browser mein leak kar dega.
