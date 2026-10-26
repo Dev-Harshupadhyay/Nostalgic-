@@ -56,7 +56,8 @@ export async function POST(req: NextRequest) {
       ? body.receipt.trim().slice(0, 40)
       : `rcpt_${Date.now()}`;
 
-  const keyId = process.env.RAZORPAY_KEY_ID;
+  const keyId =
+    process.env.RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
   const keySecret = process.env.RAZORPAY_KEY_SECRET;
 
   if (!keyId || !keySecret) {
@@ -83,6 +84,7 @@ export async function POST(req: NextRequest) {
         order_id: order.id,
         amount: order.amount,
         currency: order.currency,
+        key_id: keyId,
       },
       { status: 200 }
     );
