@@ -2,7 +2,6 @@
 
 import SongShelf from "./SongShelf";
 import type { GroupKey, Song } from "@/lib/types";
-import { slugify } from "@/lib/format";
 
 type Props = {
   group: GroupKey;
@@ -15,12 +14,7 @@ export default function CategorySection({ group, buckets, live = false }: Props)
   return (
     <div className="space-y-10">
       {buckets.map(({ category, songs }, i) => (
-        <div
-          key={category}
-          id={`${group}-${slugify(category)}`}
-          className="fade-up scroll-mt-28"
-          style={{ animationDelay: `${Math.min(i, 5) * 60}ms` }}
-        >
+        <div key={category} className="fade-up" style={{ animationDelay: `${Math.min(i, 5) * 60}ms` }}>
           <SongShelf
             title={category}
             songs={songs}

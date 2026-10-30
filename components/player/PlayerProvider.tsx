@@ -8,7 +8,6 @@ import {
   useMemo,
   useRef,
   useState,
-  type RefObject,
 } from "react";
 import type { PlayerStatus, RepeatMode, Song } from "@/lib/types";
 import { shortTitle } from "@/lib/format";
@@ -76,7 +75,6 @@ type PlayerContextValue = {
   resumeLast: () => void;
   notify: (message: string) => void;
   toastMessage: { id: number; text: string } | null;
-  playerMountRef: RefObject<HTMLDivElement | null>;
 };
 
 const PlayerContext = createContext<PlayerContextValue | null>(null);
@@ -99,18 +97,8 @@ function readJSON<T>(key: string, fallback: T): T {
   }
 }
 
-/**
- * Set by the user provider once consent resolves. A single gate here means no
- * persistence path can accidentally bypass a refusal, and the app still runs
- * perfectly in memory when storage is declined.
- */
-let persistAllowed = false;
-export function setPersistAllowed(allowed: boolean) {
-  persistAllowed = allowed;
-}
-
 function writeJSON(key: string, value: unknown) {
-  if (typeof window === "undefined" || !persistAllowed) return;
+  if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(key, JSON.stringify(value));
   } catch {
@@ -144,7 +132,6 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [favourites, setFavourites] = useState<Song[]>([]);
   const [resumeTarget, setResumeTarget] = useState<{ song: Song; position: number } | null>(null);
   const [toastMessage, setToastMessage] = useState<{ id: number; text: string } | null>(null);
-  const playerMountRef = useRef<HTMLDivElement>(null);
 
   /* Mirrors for use inside stable callbacks / player events. */
   const queueRef = useRef<Song[]>([]);
@@ -221,9 +208,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         setError("Music service is temporarily unavailable. Please try again.");
       },
     },
-    DEFAULT_PREFS.volume,
-    playerMountRef,
-    Boolean(current)
+    DEFAULT_PREFS.volume
   );
 
   /* --------------------------- Restore on mount -------------------------- */
@@ -284,34 +269,31 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   /* ------------------------------ Progress ------------------------------- */
 
   /**
-   * The official YouTube video remains visible while it plays. Pause it when
-   * the document is backgrounded; do not provide background-only playback.
+   * Single rAF loop, throttled to ~4 updates/sec. The YouTube player is the only
+   * source of truth for time — we never run an independent timer.
    */
   useEffect(() => {
     if (!isPlaying) return;
-    const onVisibilityChange = () => {
-      if (document.visibilityState === "hidden") {
-        player.pause();
-        setStatus("paused");
-      }
-    };
-    document.addEventListener("visibilitychange", onVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
-  }, [isPlaying, player]);
+    let raf = 0;
+    let last = 0;
 
-  /* Poll the visible iframe for its real playback position. */
-  useEffect(() => {
-    if (!isPlaying) return;
-    const id = window.setInterval(() => {
-      if (seekingRef.current) return;
-      const time = player.getCurrentTime();
-      if (Number.isFinite(time)) setCurrentTime(time);
-      const total = player.getDuration();
-      if (Number.isFinite(total) && total > 0) {
-        setDuration((previous) => (Math.abs(previous - total) > 0.5 ? total : previous));
+    const tick = (ts: number) => {
+      if (ts - last >= 250) {
+        last = ts;
+        if (!seekingRef.current) {
+          const t = player.getCurrentTime();
+          if (Number.isFinite(t)) setCurrentTime(t);
+        }
+        const d = player.getDuration();
+        if (Number.isFinite(d) && d > 0) {
+          setDuration((prev) => (Math.abs(prev - d) > 0.5 ? d : prev));
+        }
       }
-    }, 350);
-    return () => window.clearInterval(id);
+      raf = window.requestAnimationFrame(tick);
+    };
+
+    raf = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(raf);
   }, [isPlaying, player]);
 
   /* Persist a resume point (throttled). */
@@ -322,6 +304,29 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     }, 2000);
     return () => window.clearTimeout(id);
   }, [current, currentTime]);
+
+  /* Lock-screen / headset controls on Android. */
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !("mediaSession" in navigator) || !current) return;
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: current.title,
+        artist: current.artist,
+        album: current.category,
+        artwork: [
+          { src: current.thumbnail, sizes: "480x360", type: "image/jpeg" },
+          {
+            src: `https://i.ytimg.com/vi/${current.youtubeId}/maxresdefault.jpg`,
+            sizes: "1280x720",
+            type: "image/jpeg",
+          },
+        ],
+      });
+      navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
+    } catch {
+      /* unsupported browser */
+    }
+  }, [current, isPlaying]);
 
   /* ------------------------------ Transport ------------------------------ */
 
@@ -394,8 +399,6 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     advanceRef.current = advance;
   }, [advance]);
-
-
 
   const playQueue = useCallback(
     (songs: Song[], startIndex = 0) => {
@@ -768,7 +771,6 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       resumeLast,
       notify,
       toastMessage,
-      playerMountRef,
     }),
     [
       current,
@@ -808,7 +810,6 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       resumeLast,
       notify,
       toastMessage,
-      playerMountRef,
     ]
   );
 

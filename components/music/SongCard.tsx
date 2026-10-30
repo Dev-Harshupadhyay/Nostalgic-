@@ -4,7 +4,7 @@ import { memo, useCallback } from "react";
 import { usePlayer } from "@/components/player/PlayerProvider";
 import { shortTitle } from "@/lib/format";
 import type { Song } from "@/lib/types";
-import { Play, Pause, Plus, Heart } from "@/components/ui/Icons";
+import { Play, Pause, Plus } from "@/components/ui/Icons";
 
 type Props = {
   song: Song;
@@ -14,9 +14,7 @@ type Props = {
 };
 
 function SongCardBase({ song, contextQueue, priority = false, compact = false }: Props) {
-  const { playSong, addToQueue, current, isPlaying, togglePlay, toggleFavourite, isFavourite } =
-    usePlayer();
-  const faved = isFavourite(song);
+  const { playSong, addToQueue, current, isPlaying, togglePlay } = usePlayer();
   const active = current?.youtubeId === song.youtubeId;
   const playingThis = active && isPlaying;
 
@@ -31,14 +29,6 @@ function SongCardBase({ song, contextQueue, priority = false, compact = false }:
       addToQueue(song);
     },
     [addToQueue, song]
-  );
-
-  const onFav = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      toggleFavourite(song);
-    },
-    [toggleFavourite, song]
   );
 
   return (
@@ -79,22 +69,6 @@ function SongCardBase({ song, contextQueue, priority = false, compact = false }:
             aria-hidden
             className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/75 via-black/5 to-transparent"
           />
-          <button
-            type="button"
-            onClick={onFav}
-            aria-pressed={faved}
-            aria-label={
-              faved
-                ? `Remove ${shortTitle(song.title, 30)} from favourites`
-                : `Add ${shortTitle(song.title, 30)} to favourites`
-            }
-            className={`fav-btn absolute left-2 top-2 grid h-8 w-8 place-items-center rounded-full ${
-              faved ? "is-fav" : ""
-            }`}
-          >
-            <Heart size={15} filled={faved} />
-          </button>
-
           {song.duration ? (
             <span className="absolute right-2 top-2 rounded-md bg-black/70 px-1.5 py-0.5 text-[0.65rem] font-semibold tabular-nums text-white/90 backdrop-blur">
               {song.duration}
@@ -102,7 +76,7 @@ function SongCardBase({ song, contextQueue, priority = false, compact = false }:
           ) : null}
 
           <span
-            className={`absolute bottom-2 left-2 grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-[#a7f3d0] to-[#059669] text-[#03170f] shadow-[0_8px_24px_-8px_rgba(16,185,129,0.75)] transition-all duration-300 ${
+            className={`absolute bottom-2 left-2 grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-[#ffd390] to-[#c9662b] text-[#150c05] shadow-[0_8px_24px_-8px_rgba(232,163,61,0.95)] transition-all duration-300 ${
               active
                 ? "translate-y-0 opacity-100"
                 : "translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100"
@@ -125,7 +99,7 @@ function SongCardBase({ song, contextQueue, priority = false, compact = false }:
       <div className="flex flex-1 flex-col gap-1 p-3">
         <h3
           className={`line-2 text-[0.82rem] font-semibold leading-snug ${
-            active ? "text-[#6ee7b7]" : "text-white/92"
+            active ? "text-[color:var(--color-amber)]" : "text-white/92"
           }`}
           title={song.title}
         >
@@ -142,7 +116,7 @@ function SongCardBase({ song, contextQueue, priority = false, compact = false }:
             type="button"
             onClick={onAdd}
             aria-label={`Add ${shortTitle(song.title, 30)} to queue`}
-            className="grid h-7 w-7 place-items-center rounded-full border border-white/12 text-white/60 transition hover:border-[#34d399]/60 hover:text-[#6ee7b7]"
+            className="grid h-7 w-7 place-items-center rounded-full border border-white/12 text-white/60 transition hover:border-[color:var(--color-amber)]/60 hover:text-[color:var(--color-amber)]"
           >
             <Plus size={14} />
           </button>

@@ -1,17 +1,13 @@
 import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
-import { LocaleProvider } from "@/components/i18n/LocaleProvider";
 import { PlayerProvider } from "@/components/player/PlayerProvider";
-import { UserProvider } from "@/components/user/UserProvider";
-import WelcomeGate from "@/components/user/WelcomeGate";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import MiniPlayer from "@/components/player/MiniPlayer";
 import FullPlayer from "@/components/player/FullPlayer";
 import QueuePanel from "@/components/player/QueuePanel";
 import WelcomeToast from "@/components/layout/WelcomeToast";
-import SupportPop from "@/components/support/SupportPop";
 import { SITE, DEV } from "@/lib/site";
 import "./globals.css";
 
@@ -67,7 +63,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#070909",
+  themeColor: "#0b0708",
   colorScheme: "dark",
 };
 
@@ -112,7 +108,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap"
           rel="stylesheet"
         />
-        <script src="https://checkout.razorpay.com/v1/checkout.js" async />
         <script
           type="application/ld+json"
           // Static, trusted, build-time JSON — safe to inline.
@@ -124,9 +119,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <div className="grain" aria-hidden />
         <div className="scanlines" aria-hidden />
 
-        <LocaleProvider>
         <PlayerProvider>
-          <UserProvider>
           <div className="flex min-h-dvh flex-col">
             <Header />
             <main id="main" className="player-gap flex-1">
@@ -139,11 +132,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <FullPlayer />
           <QueuePanel />
           <WelcomeToast />
-          <WelcomeGate />
-          <SupportPop />
-          </UserProvider>
         </PlayerProvider>
-        </LocaleProvider>
 
         <Analytics />
         <SpeedInsights />

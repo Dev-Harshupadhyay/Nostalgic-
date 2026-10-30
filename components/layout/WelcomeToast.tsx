@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { usePlayer } from "@/components/player/PlayerProvider";
-import { useUser } from "@/components/user/UserProvider";
 
 type Toast = { id: number; text: string; sub?: string; leaving?: boolean };
 
@@ -12,17 +11,8 @@ type Toast = { id: number; text: string; sub?: string; leaving?: boolean };
  *  - ad-hoc messages pushed through usePlayer().notify()
  * Never uses window.alert, never traps focus, announced via aria-live.
  */
-function greeting(hour: number): string {
-  if (hour < 5) return "Raat ke is waqt bhi music";
-  if (hour < 12) return "Good morning";
-  if (hour < 17) return "Good afternoon";
-  if (hour < 21) return "Good evening";
-  return "Good night";
-}
-
 export default function WelcomeToast() {
   const { toastMessage } = usePlayer();
-  const { name, hydrated, onboarded } = useUser();
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const push = (text: string, sub?: string, ttl = 4200) => {
@@ -34,22 +24,13 @@ export default function WelcomeToast() {
     }, ttl);
   };
 
-  /* Fires once the welcome dialog has resolved, so the greeting never races
-     the name prompt. Always auto-dismisses. */
-  const greetedRef = useRef(false);
   useEffect(() => {
-    if (!hydrated || !onboarded || greetedRef.current) return;
-    greetedRef.current = true;
-    const hello = greeting(new Date().getHours());
-    const t = window.setTimeout(() => {
-      if (name) {
-        push(`${hello}, ${name} 🎧`, "Aapka music ready hai — enjoy!", 5200);
-      } else {
-        push("Welcome 🎧", "Enjoy the music — built with ❤️ by Harsh.", 5200);
-      }
-    }, 650);
+    const t = window.setTimeout(
+      () => push("Welcome back 🎧", "Enjoy the music — built with ❤️ by Harsh.", 5200),
+      700
+    );
     return () => window.clearTimeout(t);
-  }, [hydrated, onboarded, name]);
+  }, []);
 
   useEffect(() => {
     if (!toastMessage) return;
@@ -61,13 +42,13 @@ export default function WelcomeToast() {
     <div
       aria-live="polite"
       aria-atomic="false"
-      className="pointer-events-none fixed inset-x-0 bottom-[calc(var(--miniplayer-h)+18px)] z-[95] flex flex-col items-center gap-2 px-4 sm:right-5 sm:bottom-[calc(var(--miniplayer-h)+22px)] sm:left-auto sm:items-end"
+      className="pointer-events-none fixed inset-x-0 top-[68px] z-[95] flex flex-col items-center gap-2 px-4 sm:top-auto sm:bottom-[calc(var(--miniplayer-h)+22px)] sm:right-5 sm:left-auto sm:items-end"
     >
       {toasts.map((t) => (
         <div
           key={t.id}
           role="status"
-          className={`surface-warm pointer-events-auto max-w-[min(92vw,360px)] rounded-2xl px-4 py-3 ${
+          className={`glass pointer-events-auto max-w-[min(92vw,360px)] rounded-2xl px-4 py-3 shadow-[0_18px_46px_-20px_rgba(0,0,0,0.95)] ${
             t.leaving ? "toast-out" : "toast-in"
           }`}
         >
