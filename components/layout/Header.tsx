@@ -22,9 +22,9 @@ export const TABS = [
   { href: "/search", label: "Search", emoji: "🔎", hint: "Find any song" },
 ] as const;
 
-// Keep the top rail cinematic and uncluttered; secondary destinations stay in the drawer.
+// Keep the main destinations visible in the top rail; utility pages stay in the drawer.
 const PRIMARY_TABS = TABS.filter((tab) =>
-  ["/", "/old-songs", "/evergreen", "/chhath", "/trending"].includes(tab.href)
+  ["/", "/old-songs", "/evergreen", "/chhath", "/bhojpuri", "/trending", "/live"].includes(tab.href)
 );
 
 function Hamburger({ open }: { open: boolean }) {
@@ -141,7 +141,7 @@ export default function Header() {
         Skip to content
       </a>
 
-      <div className="border-b border-white/8 bg-[#0b0708]/80 backdrop-blur-xl">
+      <div className="border-b border-white/8 bg-[#0b100e]/92 backdrop-blur-xl">
         <div className="mx-auto flex max-w-[1400px] items-center gap-2 px-3 py-2.5 sm:gap-3 sm:px-5">
           {/* Hamburger — primary nav on mobile, "More" on desktop */}
           <button
@@ -182,7 +182,7 @@ export default function Header() {
           {/* Desktop tab rail */}
           <nav
             ref={navRef}
-            className="scroll-x hidden flex-1 items-center gap-1 px-1 lg:flex"
+            className="header-primary-nav scroll-x hidden flex-1 items-center gap-0.5 px-1 lg:flex"
             aria-label="Main navigation"
           >
             {PRIMARY_TABS.map((tab) => {
@@ -238,7 +238,7 @@ export default function Header() {
 
         {/* Mobile tab rail (secondary, scrollable) */}
         <nav
-          className="scroll-x flex items-center gap-1 border-t border-white/6 px-3 py-1.5 lg:hidden"
+          className="header-mobile-nav scroll-x flex items-center gap-1 border-t border-white/6 px-3 py-1.5 lg:hidden"
           aria-label="Section navigation"
         >
           {PRIMARY_TABS.map((tab) => {
