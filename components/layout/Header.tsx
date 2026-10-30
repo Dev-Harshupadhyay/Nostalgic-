@@ -10,17 +10,22 @@ import { useI18n } from "@/components/i18n/LocaleProvider";
 
 export const TABS = [
   { href: "/", label: "Home", emoji: "🏠", hint: "Overview & featured" },
-  { href: "/evergreen", label: "Evergreen", emoji: "✨", hint: "2000s solid hits" },
-  { href: "/favourites", label: "Favourites", emoji: "❤️", hint: "Your saved playlist" },
-  { href: "/playlist", label: "My Playlist", emoji: "🎶", hint: "Play a public YouTube list" },
-  { href: "/old-songs", label: "Old Songs", emoji: "🎵", hint: "Memories" },
-  { href: "/singles", label: "Singles", emoji: "💿", hint: "One song, one mood" },
-  { href: "/trending", label: "New & Trending", emoji: "🔥", hint: "What's new" },
-  { href: "/chhath", label: "Chhath Puja", emoji: "🪔", hint: "Traditional vibes" },
+  { href: "/old-songs", label: "Old Songs", emoji: "🎵", hint: "Era-led memories" },
+  { href: "/evergreen", label: "Evergreen", emoji: "✨", hint: "Timeless across eras" },
+  { href: "/chhath", label: "Chhath Bhakti", emoji: "🪔", hint: "Chhath geet & devotion" },
   { href: "/bhojpuri", label: "Bhojpuri", emoji: "🎤", hint: "Desi vibes" },
+  { href: "/trending", label: "New & Trending", emoji: "🔥", hint: "Fresh discoveries" },
+  { href: "/singles", label: "Singles", emoji: "💿", hint: "One song, one mood" },
+  { href: "/favourites", label: "Favourites", emoji: "❤️", hint: "Your saved songs" },
+  { href: "/playlist", label: "My Playlist", emoji: "🎶", hint: "Play a public YouTube list" },
   { href: "/live", label: "Live Song", emoji: "📡", hint: "Play live from YouTube" },
   { href: "/search", label: "Search", emoji: "🔎", hint: "Find any song" },
 ] as const;
+
+// Keep the top rail cinematic and uncluttered; secondary destinations stay in the drawer.
+const PRIMARY_TABS = TABS.filter((tab) =>
+  ["/", "/old-songs", "/evergreen", "/chhath", "/trending"].includes(tab.href)
+);
 
 function Hamburger({ open }: { open: boolean }) {
   return (
@@ -159,14 +164,14 @@ export default function Header() {
             className="flex shrink-0 items-center gap-2.5"
             aria-label="Nostalgic Music Player — home"
           >
-            <span className="relative grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-[#ffd390] via-[#e8a33d] to-[#c9662b] text-[#150c05] shadow-[0_8px_24px_-10px_rgba(232,163,61,0.9)]">
+            <span className="cinema-brand-mark">
               <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden fill="currentColor">
                 <path d="M9 18.2V6.8l10-2v10.1a3 3 0 1 1-1.6-2.66V7.1l-6.8 1.36v9.74A3 3 0 1 1 9 15.54v2.66z" />
               </svg>
             </span>
             <span className="hidden flex-col leading-tight xs:flex sm:flex">
               <span className="text-[0.95rem] font-extrabold tracking-tight">
-                <span className="warm-text">Nostalgic</span>
+                <span className="cinema-brand-text">Nostalgic</span>
               </span>
               <span className="text-[0.58rem] uppercase tracking-[0.2em] text-white/40">
                 Music Player
@@ -180,7 +185,7 @@ export default function Header() {
             className="scroll-x hidden flex-1 items-center gap-1 px-1 lg:flex"
             aria-label="Main navigation"
           >
-            {TABS.map((tab) => {
+            {PRIMARY_TABS.map((tab) => {
               const active = isActive(tab.href);
               return (
                 <Link
@@ -190,9 +195,6 @@ export default function Header() {
                   aria-current={active ? "page" : undefined}
                   className="tab-link"
                 >
-                  <span aria-hidden className="text-[0.95em]">
-                    {tab.emoji}
-                  </span>
                   <span>{labelFor(tab.href) ?? tab.label}</span>
                   {active ? <span className="tab-underline" aria-hidden /> : null}
                 </Link>
@@ -212,6 +214,21 @@ export default function Header() {
           </Link>
 
           <Link
+            href="/search"
+            aria-label="Search music"
+            data-tooltip="Search"
+            className="icon-btn tap-target hidden h-10 w-10 shrink-0 border border-white/12 text-white/70 hover:text-white lg:grid xl:hidden"
+          >
+            <Search size={17} />
+          </Link>
+
+          <Link href="/search" className="header-search-link hidden shrink-0 xl:flex" aria-label="Search songs">
+            <Search size={15} />
+            <span>Search songs</span>
+            <kbd>/</kbd>
+          </Link>
+
+          <Link
             href="/support"
             className="btn btn-glow hidden shrink-0 px-4 py-2 text-[0.78rem] sm:inline-flex"
           >
@@ -224,7 +241,7 @@ export default function Header() {
           className="scroll-x flex items-center gap-1 border-t border-white/6 px-3 py-1.5 lg:hidden"
           aria-label="Section navigation"
         >
-          {TABS.map((tab) => {
+          {PRIMARY_TABS.map((tab) => {
             const active = isActive(tab.href);
             return (
               <Link
@@ -234,7 +251,6 @@ export default function Header() {
                 aria-current={active ? "page" : undefined}
                 className="tab-link !text-[0.8rem]"
               >
-                <span aria-hidden>{tab.emoji}</span>
                 <span>{labelFor(tab.href) ?? tab.label}</span>
                 {active ? <span className="tab-underline" aria-hidden /> : null}
               </Link>

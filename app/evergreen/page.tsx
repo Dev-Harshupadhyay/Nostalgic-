@@ -5,9 +5,9 @@ import EvergreenHero from "@/components/evergreen/EvergreenHero";
 import { songsByCategory, getGroup } from "@/lib/catalog";
 
 export const metadata: Metadata = {
-  title: "Evergreen — 2000s Solid Hits & Timeless Bollywood",
+  title: "Evergreen — Timeless Hindi Classics & Sada-bahar Songs",
   description:
-    "Evergreen collection by Nostalgic — 2000s solid hits, timeless melodies, romantic evergreen, retro gold and golden oldies. Sadabahar gaane jo kabhi purane nahi hote.",
+    "Evergreen by Nostalgic: timeless Hindi melodies, romantic classics, retro gold and golden oldies—curated by lasting appeal, not only release year.",
   alternates: { canonical: "/evergreen" },
   keywords: [
     "evergreen songs",
@@ -17,9 +17,9 @@ export const metadata: Metadata = {
     "evergreen bollywood",
   ],
   openGraph: {
-    title: "Evergreen — 2000s Solid Hits & Timeless Bollywood",
+    title: "Evergreen — Timeless Hindi Classics & Sada-bahar Songs",
     description:
-      "2000s solid hits, evergreen melodies, romantic classics and retro gold — all in one glowing collection.",
+      "Timeless Hindi melodies, romantic classics, retro gold and golden oldies—curated by lasting appeal.",
     url: "/evergreen",
   },
 };

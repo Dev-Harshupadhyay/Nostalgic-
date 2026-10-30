@@ -9,7 +9,7 @@ const NAV_LINKS = [
   { href: "/old-songs", label: "Old Songs" },
   { href: "/singles", label: "Singles" },
   { href: "/trending", label: "Trending" },
-  { href: "/chhath", label: "Chhath" },
+  { href: "/chhath", label: "Chhath Bhakti" },
   { href: "/bhojpuri", label: "Bhojpuri" },
 ];
 
