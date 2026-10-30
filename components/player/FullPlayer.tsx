@@ -172,8 +172,9 @@ export default function FullPlayer() {
           </div>
         </header>
 
-        {/* React owns this visible host; the IFrame API mounts its iframe inside it. */}
-        <div className="yt-stage-video" aria-label="YouTube video player">
+        <div className="yt-stage-layout">
+          {/* Keep YouTube visible but compact beside the audio controls; never hide or shrink below policy minimums. */}
+          <div className="yt-stage-video" aria-label="Visible YouTube video player">
           <div ref={playerMountRef} className="yt-player-host" />
         </div>
 
@@ -224,7 +225,7 @@ export default function FullPlayer() {
             <ProgressBar currentTime={currentTime} duration={duration} onSeek={seekTo} size="sm" />
           </div>
           <div className="yt-stage-controls">
-            <PlayerControls size={fullPlayerOpen ? "md" : "sm"} showExtras={fullPlayerOpen} />
+            <PlayerControls size={fullPlayerOpen ? "md" : "sm"} showExtras={fullPlayerOpen} showVolume />
           </div>
 
           {fullPlayerOpen && upNext ? (
@@ -234,7 +235,8 @@ export default function FullPlayer() {
               <span>Open queue →</span>
             </button>
           ) : null}
-          <p className="yt-stage-footnote">{STATUS_COPY[status] ?? "YouTube playback"} · playback stays in the visible YouTube player.</p>
+          <p className="yt-stage-footnote">{STATUS_COPY[status] ?? "YouTube playback"} · keep the visible video player on-screen while listening.</p>
+          </div>
         </div>
       </section>
     </div>
