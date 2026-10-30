@@ -3,76 +3,31 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Search, Close, ExternalLink, ChevronRight } from "@/components/ui/Icons";
+import { Search, Close, ExternalLink } from "@/components/ui/Icons";
 import { DEV } from "@/lib/site";
-import LanguageSwitch from "@/components/i18n/LanguageSwitch";
-import { useI18n } from "@/components/i18n/LocaleProvider";
 
 export const TABS = [
   { href: "/", label: "Home", emoji: "🏠", hint: "Overview & featured" },
-  { href: "/old-songs", label: "Old Songs", emoji: "🎵", hint: "Era-led memories" },
-  { href: "/evergreen", label: "Evergreen", emoji: "✨", hint: "Timeless across eras" },
-  { href: "/chhath", label: "Chhath Bhakti", emoji: "🪔", hint: "Chhath geet & devotion" },
-  { href: "/bhojpuri", label: "Bhojpuri", emoji: "🎤", hint: "Desi vibes" },
-  { href: "/trending", label: "New & Trending", emoji: "🔥", hint: "Fresh discoveries" },
+  { href: "/old-songs", label: "Old Songs", emoji: "🎵", hint: "Memories" },
   { href: "/singles", label: "Singles", emoji: "💿", hint: "One song, one mood" },
-  { href: "/favourites", label: "Favourites", emoji: "❤️", hint: "Your saved songs" },
-  { href: "/playlist", label: "My Playlist", emoji: "🎶", hint: "Play a public YouTube list" },
-  { href: "/live", label: "Live Song", emoji: "📡", hint: "Play live from YouTube" },
+  { href: "/trending", label: "New & Trending", emoji: "🔥", hint: "What's new" },
+  { href: "/chhath", label: "Chhath Puja", emoji: "🪔", hint: "Traditional vibes" },
+  { href: "/bhojpuri", label: "Bhojpuri", emoji: "🎤", hint: "Desi vibes" },
   { href: "/search", label: "Search", emoji: "🔎", hint: "Find any song" },
 ] as const;
 
-// Keep the main destinations visible in the top rail; utility pages stay in the drawer.
-const PRIMARY_TABS = TABS.filter((tab) =>
-  ["/", "/old-songs", "/evergreen", "/chhath", "/bhojpuri", "/trending", "/live"].includes(tab.href)
-);
-
 function Hamburger({ open }: { open: boolean }) {
   return (
-    <>
-      <span className="burger-halo" aria-hidden />
-      <span className={`burger ${open ? "is-open" : ""}`} aria-hidden>
-        <span className="burger-bars">
-          <span />
-          <span />
-          <span />
-        </span>
-      </span>
-    </>
+    <span className={`hamburger ${open ? "is-open" : ""}`} aria-hidden>
+      <span />
+      <span />
+      <span />
+    </span>
   );
 }
 
 export default function Header() {
-  const { t } = useI18n();
   const pathname = usePathname();
-  const labelFor = (href: string) =>
-    ({
-      "/": t.nav.home,
-      "/evergreen": t.nav.evergreen,
-      "/favourites": t.nav.favourites,
-      "/playlist": t.nav.playlist,
-      "/old-songs": t.nav.oldSongs,
-      "/singles": t.nav.singles,
-      "/trending": t.nav.trending,
-      "/chhath": t.nav.chhath,
-      "/bhojpuri": t.nav.bhojpuri,
-      "/live": t.nav.live,
-      "/search": t.nav.search,
-    })[href];
-  const hintFor = (href: string) =>
-    ({
-      "/": t.hint.home,
-      "/evergreen": t.hint.evergreen,
-      "/favourites": t.hint.favourites,
-      "/playlist": t.hint.playlist,
-      "/old-songs": t.hint.oldSongs,
-      "/singles": t.hint.singles,
-      "/trending": t.hint.trending,
-      "/chhath": t.hint.chhath,
-      "/bhojpuri": t.hint.bhojpuri,
-      "/live": t.hint.live,
-      "/search": t.hint.search,
-    })[href];
   const navRef = useRef<HTMLDivElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -141,37 +96,35 @@ export default function Header() {
         Skip to content
       </a>
 
-      <div className="border-b border-white/8 bg-[#0b100e]/92 backdrop-blur-xl">
+      <div className="border-b border-white/8 bg-[#0b0708]/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-[1400px] items-center gap-2 px-3 py-2.5 sm:gap-3 sm:px-5">
           {/* Hamburger — primary nav on mobile, "More" on desktop */}
           <button
             ref={triggerRef}
             type="button"
             onClick={() => setMenuOpen((v) => !v)}
-            aria-label={menuOpen ? "Close menu" : t.nav.menu}
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
             aria-expanded={menuOpen}
             aria-controls="main-drawer"
-            data-tooltip={t.nav.menu}
-            className="burger-btn tap-target shrink-0"
+            data-tooltip="Menu"
+            className="icon-btn tap-target h-10 w-10 shrink-0 text-white/80 hover:text-white"
           >
             <Hamburger open={menuOpen} />
           </button>
-
-          <LanguageSwitch />
 
           <Link
             href="/"
             className="flex shrink-0 items-center gap-2.5"
             aria-label="Nostalgic Music Player — home"
           >
-            <span className="cinema-brand-mark">
+            <span className="relative grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-[#ffd390] via-[#e8a33d] to-[#c9662b] text-[#150c05] shadow-[0_8px_24px_-10px_rgba(232,163,61,0.9)]">
               <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden fill="currentColor">
                 <path d="M9 18.2V6.8l10-2v10.1a3 3 0 1 1-1.6-2.66V7.1l-6.8 1.36v9.74A3 3 0 1 1 9 15.54v2.66z" />
               </svg>
             </span>
             <span className="hidden flex-col leading-tight xs:flex sm:flex">
               <span className="text-[0.95rem] font-extrabold tracking-tight">
-                <span className="cinema-brand-text">Nostalgic</span>
+                <span className="warm-text">Nostalgic</span>
               </span>
               <span className="text-[0.58rem] uppercase tracking-[0.2em] text-white/40">
                 Music Player
@@ -182,10 +135,10 @@ export default function Header() {
           {/* Desktop tab rail */}
           <nav
             ref={navRef}
-            className="header-primary-nav scroll-x hidden flex-1 items-center gap-0.5 px-1 lg:flex"
+            className="scroll-x hidden flex-1 items-center gap-1 px-1 lg:flex"
             aria-label="Main navigation"
           >
-            {PRIMARY_TABS.map((tab) => {
+            {TABS.map((tab) => {
               const active = isActive(tab.href);
               return (
                 <Link
@@ -195,7 +148,10 @@ export default function Header() {
                   aria-current={active ? "page" : undefined}
                   className="tab-link"
                 >
-                  <span>{labelFor(tab.href) ?? tab.label}</span>
+                  <span aria-hidden className="text-[0.95em]">
+                    {tab.emoji}
+                  </span>
+                  <span>{tab.label}</span>
                   {active ? <span className="tab-underline" aria-hidden /> : null}
                 </Link>
               );
@@ -214,21 +170,6 @@ export default function Header() {
           </Link>
 
           <Link
-            href="/search"
-            aria-label="Search music"
-            data-tooltip="Search"
-            className="icon-btn tap-target hidden h-10 w-10 shrink-0 border border-white/12 text-white/70 hover:text-white lg:grid xl:hidden"
-          >
-            <Search size={17} />
-          </Link>
-
-          <Link href="/search" className="header-search-link hidden shrink-0 xl:flex" aria-label="Search songs">
-            <Search size={15} />
-            <span>Search songs</span>
-            <kbd>/</kbd>
-          </Link>
-
-          <Link
             href="/support"
             className="btn btn-glow hidden shrink-0 px-4 py-2 text-[0.78rem] sm:inline-flex"
           >
@@ -238,10 +179,10 @@ export default function Header() {
 
         {/* Mobile tab rail (secondary, scrollable) */}
         <nav
-          className="header-mobile-nav scroll-x flex items-center gap-1 border-t border-white/6 px-3 py-1.5 lg:hidden"
+          className="scroll-x flex items-center gap-1 border-t border-white/6 px-3 py-1.5 lg:hidden"
           aria-label="Section navigation"
         >
-          {PRIMARY_TABS.map((tab) => {
+          {TABS.map((tab) => {
             const active = isActive(tab.href);
             return (
               <Link
@@ -251,7 +192,8 @@ export default function Header() {
                 aria-current={active ? "page" : undefined}
                 className="tab-link !text-[0.8rem]"
               >
-                <span>{labelFor(tab.href) ?? tab.label}</span>
+                <span aria-hidden>{tab.emoji}</span>
+                <span>{tab.label}</span>
                 {active ? <span className="tab-underline" aria-hidden /> : null}
               </Link>
             );
@@ -274,56 +216,46 @@ export default function Header() {
             role="dialog"
             aria-modal="true"
             aria-label="Site menu"
-            className="drawer drawer-in absolute inset-y-0 left-0 flex w-[min(86vw,340px)] flex-col"
+            className="glass drawer-in absolute inset-y-0 left-0 flex w-[min(86vw,340px)] flex-col"
           >
-            <div aria-hidden className="drawer-aura" />
-
-            <div className="drawer-head">
-              <span className="drawer-logo" aria-hidden>
-                <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M9 18.2V6.8l10-2v10.1a3 3 0 1 1-1.6-2.66V7.1l-6.8 1.36v9.74A3 3 0 1 1 9 15.54v2.66z" />
-                </svg>
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-[0.92rem] font-extrabold leading-tight">
-                  <span className="warm-text">Nostalgic</span>
+            <div className="flex items-center justify-between gap-3 border-b border-white/8 px-4 py-3.5">
+              <div>
+                <p className="text-sm font-extrabold">
+                  <span className="warm-text">Nostalgic</span> Music Player
                 </p>
-                <p className="mt-0.5 text-[0.66rem] leading-snug text-white/42">{t.nav.tagline}</p>
+                <p className="text-[0.66rem] text-white/42">Your memories, one song at a time.</p>
               </div>
               <button
                 type="button"
                 onClick={() => setMenuOpen(false)}
-                aria-label={t.common.close}
-                className="drawer-x"
+                aria-label="Close menu"
+                className="icon-btn tap-target h-9 w-9 text-white/70 hover:text-white"
               >
-                <Close size={17} />
+                <Close size={18} />
               </button>
             </div>
 
-            <nav className="scroll-y flex-1 px-2.5 py-3" aria-label="Menu navigation">
+            <nav className="scroll-y flex-1 px-2 py-3" aria-label="Menu navigation">
               <ul className="space-y-1">
-                {TABS.map((tab, i) => {
+                {TABS.map((tab) => {
                   const active = isActive(tab.href);
                   return (
-                    <li
-                      key={tab.href}
-                      className="drawer-item-in"
-                      style={{ animationDelay: `${Math.min(i, 10) * 34}ms` }}
-                    >
+                    <li key={tab.href}>
                       <Link
                         href={tab.href}
                         aria-current={active ? "page" : undefined}
-                        className={`drawer-item ${active ? "is-active" : ""}`}
+                        className={`flex items-center gap-3 rounded-xl px-3 py-2.5 transition ${
+                          active
+                            ? "bg-[color:var(--color-amber)]/14 text-white"
+                            : "text-white/72 hover:bg-white/6 hover:text-white"
+                        }`}
                       >
-                        <span aria-hidden className="drawer-ico">
+                        <span aria-hidden className="text-lg">
                           {tab.emoji}
                         </span>
                         <span className="min-w-0 flex-1">
-                          <span className="drawer-label">{labelFor(tab.href) ?? tab.label}</span>
-                          <span className="drawer-hint">{hintFor(tab.href) ?? tab.hint}</span>
-                        </span>
-                        <span aria-hidden className="drawer-chev">
-                          <ChevronRight size={14} />
+                          <span className="block text-sm font-semibold">{tab.label}</span>
+                          <span className="block text-[0.68rem] text-white/40">{tab.hint}</span>
                         </span>
                       </Link>
                     </li>
@@ -331,29 +263,29 @@ export default function Header() {
                 })}
               </ul>
 
-              <div className="drawer-sep" />
+              <hr className="my-3 border-white/8" />
 
               <ul className="space-y-1">
                 <li>
                   <Link
                     href="/support"
-                    className="drawer-item is-sub"
+                    className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-white/72 transition hover:bg-white/6 hover:text-white"
                   >
-                    <span aria-hidden className="drawer-ico">
+                    <span aria-hidden className="text-lg">
                       ❤️
                     </span>
-                    <span className="drawer-label flex-1">{t.nav.support}</span>
+                    <span className="text-sm font-semibold">Support Dev Harsh</span>
                   </Link>
                 </li>
                 <li>
                   <Link
                     href="/developer"
-                    className="drawer-item is-sub"
+                    className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-white/72 transition hover:bg-white/6 hover:text-white"
                   >
-                    <span aria-hidden className="drawer-ico">
+                    <span aria-hidden className="text-lg">
                       🛠️
                     </span>
-                    <span className="drawer-label flex-1">{t.nav.developer}</span>
+                    <span className="text-sm font-semibold">About Developer</span>
                   </Link>
                 </li>
                 <li>
@@ -361,12 +293,12 @@ export default function Header() {
                     href={DEV.portfolio}
                     target="_blank"
                     rel="noopener noreferrer external"
-                    className="drawer-item is-sub"
+                    className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-white/72 transition hover:bg-white/6 hover:text-white"
                   >
-                    <span aria-hidden className="drawer-ico">
+                    <span aria-hidden className="text-lg">
                       🌐
                     </span>
-                    <span className="drawer-label flex-1">Portfolio</span>
+                    <span className="flex-1 text-sm font-semibold">Portfolio</span>
                     <ExternalLink size={14} className="text-white/35" />
                   </a>
                 </li>
@@ -375,19 +307,19 @@ export default function Header() {
                     href={DEV.timepass}
                     target="_blank"
                     rel="noopener noreferrer external"
-                    className="drawer-item is-sub"
+                    className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-white/72 transition hover:bg-white/6 hover:text-white"
                   >
-                    <span aria-hidden className="drawer-ico">
+                    <span aria-hidden className="text-lg">
                       🎬
                     </span>
-                    <span className="drawer-label flex-1">Timepass Premium</span>
+                    <span className="flex-1 text-sm font-semibold">Timepass Premium</span>
                     <ExternalLink size={14} className="text-white/35" />
                   </a>
                 </li>
               </ul>
             </nav>
 
-            <div className="drawer-foot">
+            <div className="border-t border-white/8 px-4 py-3">
               <p className="text-[0.68rem] text-white/38">
                 Made with <span className="text-[color:var(--color-rose)]">❤️</span> by{" "}
                 <a

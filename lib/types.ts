@@ -13,7 +13,6 @@ export type Song = {
 };
 
 export type GroupKey =
-  | "evergreen"
   | "oldSongs"
   | "singleSongs"
   | "trending"

@@ -19,7 +19,6 @@ function QueueRow({
   canMoveDown,
 }: {
   song: Song;
-  /** 1-based position shown to the listener. */
   index: number;
   isCurrent: boolean;
   isPlaying: boolean;
@@ -30,35 +29,25 @@ function QueueRow({
   canMoveDown: boolean;
 }) {
   return (
-    <li className={`pp-row group ${isCurrent ? "is-current" : ""}`}>
-      {/* Track number, replaced by an equalizer for the live track. */}
-      <span className="pp-row-index" aria-hidden>
-        {isCurrent && isPlaying ? (
-          <span className="eq mx-auto h-3">
-            <span />
-            <span />
-            <span />
-            <span />
-          </span>
-        ) : (
-          index
-        )}
-      </span>
-
+    <li
+      className={`group flex items-center gap-2.5 rounded-xl px-2 py-1.5 transition ${
+        isCurrent ? "bg-[color:var(--color-amber)]/12" : "hover:bg-white/6"
+      }`}
+    >
       <button
         type="button"
         onClick={onPlay}
-        className="pp-row-thumb"
+        className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg"
         aria-label={isCurrent ? "Play or pause" : `Play ${shortTitle(song.title, 30)}`}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={song.thumbnail} alt="" loading="lazy" decoding="async" />
+        <img src={song.thumbnail} alt="" loading="lazy" className="h-full w-full object-cover" />
         <span
           className={`absolute inset-0 grid place-items-center bg-black/55 transition ${
-            isCurrent ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+            isCurrent ? "opacity-100" : "opacity-0 group-hover:opacity-100"
           }`}
         >
-          {isCurrent && isPlaying ? <Pause size={14} /> : <Play size={14} />}
+          {isCurrent && isPlaying ? <Pause size={15} /> : <Play size={15} />}
         </span>
       </button>
 
@@ -67,9 +56,8 @@ function QueueRow({
           className={`line-1 text-[0.82rem] font-semibold ${
             isCurrent ? "text-[color:var(--color-amber)]" : "text-white/88"
           }`}
-          title={song.title}
         >
-          {shortTitle(song.title, 42)}
+          {shortTitle(song.title, 40)}
         </p>
         <p className="line-1 text-[0.7rem] text-white/42">
           {song.artist}
@@ -77,7 +65,7 @@ function QueueRow({
         </p>
       </button>
 
-      <div className="flex shrink-0 items-center opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100 max-[640px]:opacity-100">
+      <div className="flex shrink-0 items-center opacity-70 transition group-hover:opacity-100">
         <IconButton
           label={`Move ${shortTitle(song.title, 20)} up`}
           tooltip="Move up"
@@ -169,7 +157,7 @@ export default function QueuePanel() {
   const upNext = queue.slice(queueIndex + 1);
 
   return (
-    <div className="fixed inset-0 z-[90]" role="presentation">
+    <div className="fixed inset-0 z-[70]" role="presentation">
       <button
         type="button"
         aria-label="Close queue"
@@ -182,7 +170,7 @@ export default function QueuePanel() {
         role="dialog"
         aria-modal="true"
         aria-label="Playback queue"
-        className="surface-warm sheet-up absolute inset-x-0 bottom-0 flex max-h-[84dvh] flex-col rounded-t-3xl sm:slide-in-right sm:inset-y-0 sm:left-auto sm:right-0 sm:max-h-none sm:w-[400px] sm:rounded-none sm:rounded-l-3xl"
+        className="glass sheet-up absolute inset-x-0 bottom-0 flex max-h-[84dvh] flex-col rounded-t-3xl sm:slide-in-right sm:inset-y-0 sm:left-auto sm:right-0 sm:max-h-none sm:w-[400px] sm:rounded-none sm:rounded-l-3xl"
       >
         {/* Mobile grab handle */}
         <div className="flex justify-center pt-2.5 sm:hidden" aria-hidden>
@@ -233,7 +221,7 @@ export default function QueuePanel() {
                   <ul>
                     <QueueRow
                       song={currentSong}
-                      index={queueIndex + 1}
+                      index={queueIndex}
                       isCurrent
                       isPlaying={isPlaying}
                       onPlay={togglePlay}
@@ -256,7 +244,7 @@ export default function QueuePanel() {
                         <QueueRow
                           key={`${song.youtubeId}-${realIndex}`}
                           song={song}
-                          index={realIndex + 1}
+                          index={realIndex}
                           isCurrent={false}
                           isPlaying={false}
                           onPlay={() => jumpTo(realIndex)}
