@@ -1,63 +1,76 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import GlowButton from "@/components/ui/GlowButton";
 import { usePlayer } from "@/components/player/PlayerProvider";
 import type { Song } from "@/lib/types";
-import { Play, Sparkle } from "@/components/ui/Icons";
+import { Play, Sparkle, ChevronRight } from "@/components/ui/Icons";
 
 export default function Hero({ starterQueue }: { starterQueue: Song[] }) {
   const { playQueue, resumeTarget, resumeLast } = usePlayer();
 
   return (
-    <section className="relative overflow-hidden px-4 pb-8 pt-10 sm:px-6 sm:pt-14">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute left-1/2 top-0 h-[420px] w-[820px] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse,rgba(232,163,61,0.22),transparent_66%)] blur-3xl"
-      />
-
-      <div className="mx-auto max-w-[1400px]">
-        <div className="fade-up max-w-3xl">
-          <span className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/5 px-3 py-1.5 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-white/60 backdrop-blur">
-            <Sparkle size={13} className="text-[color:var(--color-amber)]" />
-            Harsh&apos;s Nostalgic Music Universe
+    <section className="home-hero-wrap">
+      <div className="home-hero mx-auto max-w-[1400px]">
+        <div aria-hidden className="home-hero-ambient" />
+        <div className="home-hero-copy fade-up">
+          <span className="home-hero-badge">
+            <Sparkle size={13} /> HARSH&apos;S NOSTALGIC MUSIC UNIVERSE
           </span>
 
-          <h1 className="mt-5 text-[2rem] font-extrabold leading-[1.08] tracking-tight sm:text-5xl lg:text-[3.4rem]">
-            Your memories,
-            <br />
-            <span className="warm-text">one song at a time.</span>
+          <h1>
+            Your memories,<br />
+            <span>one song at a time.</span>
           </h1>
+          <p>Old favourites, timeless classics and Chhath devotion—each music world has its own place.</p>
 
-          <p className="mt-4 max-w-xl text-sm leading-relaxed text-white/58 sm:text-base">
-            Discover old classics, new sounds, Chhath melodies and Bhojpuri favourites.
-          </p>
-
-          <div className="mt-7 flex flex-wrap items-center gap-3">
+          <div className="home-hero-actions">
             <GlowButton
               size="lg"
               aura
               onClick={() => playQueue(starterQueue, 0)}
-              aria-label="Start listening to curated songs"
+              disabled={!starterQueue.length}
+              aria-label="Start with old songs"
             >
-              <Play size={17} />
-              Start Listening
+              <Play size={17} /> Start with Old Songs
             </GlowButton>
-
-            <Link href="/old-songs" className="btn btn-ghost px-6 py-3 text-[0.95rem]">
-              Explore Music
+            <Link href="#music-worlds-title" className="btn btn-ghost px-5 py-3 text-sm">
+              Explore music <ChevronRight size={16} />
             </Link>
-
             {resumeTarget ? (
-              <button
-                type="button"
-                onClick={resumeLast}
-                className="btn btn-ghost px-5 py-3 text-[0.85rem]"
-              >
-                ▸ Resume last song
+              <button type="button" onClick={resumeLast} className="home-resume-link">
+                Resume last song <span aria-hidden>↗</span>
               </button>
             ) : null}
           </div>
+          <div className="home-hero-proof"><span className="home-live-dot" /> One shared YouTube player · clear category homes</div>
+        </div>
+
+        <div className="home-hero-art" aria-hidden="true">
+          <Image
+            src="/images/nostalgic-hero-clean.jpg"
+            alt=""
+            fill
+            priority
+            sizes="(max-width: 640px) 60vw, 40vw"
+            className="home-hero-photo"
+          />
+          <div className="home-hero-art-shade" />
+          <div className="home-hero-art-tag"><span>NOW SPINNING</span><b>GOOD MEMORIES</b></div>
+          {starterQueue[0] ? (
+            <button type="button" className="home-feature-card" onClick={() => playQueue(starterQueue, 0)} aria-label={`Play ${starterQueue[0].title}`}>
+              <span className="home-feature-thumb">
+                <Image src={starterQueue[0].thumbnail || "/images/old-songs.jpg"} alt="" fill sizes="64px" />
+                <span className="home-feature-play"><Play size={14} /></span>
+              </span>
+              <span className="home-feature-copy">
+                <span>FEATURED OLD SONG</span>
+                <strong>{starterQueue[0].title}</strong>
+                <small>{starterQueue[0].artist || "YouTube classic"}</small>
+              </span>
+            </button>
+          ) : null}
         </div>
       </div>
     </section>

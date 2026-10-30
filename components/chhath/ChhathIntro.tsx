@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import DayModal from "./DayModal";
 import GlowButton from "@/components/ui/GlowButton";
 import { usePlayer } from "@/components/player/PlayerProvider";
@@ -58,6 +59,8 @@ export default function ChhathIntro({ count }: { count: number }) {
     <>
       {/* ------------------------------ Hero ------------------------------ */}
       <header className="ch-hero fade-up">
+        <Image src="/images/chhath-bhakti.jpg" alt="" fill priority sizes="100vw" className="ch-hero-image" aria-hidden="true" />
+        <div aria-hidden className="ch-hero-image-scrim" />
         <div aria-hidden className="ch-sun" />
         <div aria-hidden className="ch-water" />
 

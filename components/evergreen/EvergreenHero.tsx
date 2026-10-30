@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import Image from "next/image";
 import GlowButton from "@/components/ui/GlowButton";
 import { usePlayer } from "@/components/player/PlayerProvider";
 import { getGroup } from "@/lib/catalog";
@@ -27,8 +28,11 @@ export default function EvergreenHero({ count }: { count: number }) {
 
   return (
     <header className="eg-hero fade-up relative overflow-hidden rounded-[28px] px-5 py-10 sm:px-9 sm:py-14">
+      <Image src="/images/evergreen.jpg" alt="" fill priority sizes="100vw" className="eg-hero-image" aria-hidden="true" />
+      <div aria-hidden className="eg-hero-image-scrim" />
       <div aria-hidden className="eg-aurora" />
       <div aria-hidden className="eg-rings" />
+      <div aria-hidden className="eg-timeless-art"><span>∞</span><b>ALL ERAS<br />ONE FEELING</b></div>
 
       <p className="eyebrow relative">{t.evergreen.eyebrow}</p>
 

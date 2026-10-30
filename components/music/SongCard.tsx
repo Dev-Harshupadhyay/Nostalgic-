@@ -102,7 +102,7 @@ function SongCardBase({ song, contextQueue, priority = false, compact = false }:
           ) : null}
 
           <span
-            className={`absolute bottom-2 left-2 grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-[#ffd390] to-[#c9662b] text-[#150c05] shadow-[0_8px_24px_-8px_rgba(232,163,61,0.95)] transition-all duration-300 ${
+            className={`absolute bottom-2 left-2 grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-[#a7f3d0] to-[#059669] text-[#03170f] shadow-[0_8px_24px_-8px_rgba(16,185,129,0.75)] transition-all duration-300 ${
               active
                 ? "translate-y-0 opacity-100"
                 : "translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100"
@@ -125,7 +125,7 @@ function SongCardBase({ song, contextQueue, priority = false, compact = false }:
       <div className="flex flex-1 flex-col gap-1 p-3">
         <h3
           className={`line-2 text-[0.82rem] font-semibold leading-snug ${
-            active ? "text-[color:var(--color-amber)]" : "text-white/92"
+            active ? "text-[#6ee7b7]" : "text-white/92"
           }`}
           title={song.title}
         >
@@ -142,7 +142,7 @@ function SongCardBase({ song, contextQueue, priority = false, compact = false }:
             type="button"
             onClick={onAdd}
             aria-label={`Add ${shortTitle(song.title, 30)} to queue`}
-            className="grid h-7 w-7 place-items-center rounded-full border border-white/12 text-white/60 transition hover:border-[color:var(--color-amber)]/60 hover:text-[color:var(--color-amber)]"
+            className="grid h-7 w-7 place-items-center rounded-full border border-white/12 text-white/60 transition hover:border-[#34d399]/60 hover:text-[#6ee7b7]"
           >
             <Plus size={14} />
           </button>
