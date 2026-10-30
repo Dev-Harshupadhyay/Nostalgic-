@@ -8,6 +8,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type RefObject,
 } from "react";
 import type { PlayerStatus, RepeatMode, Song } from "@/lib/types";
 import { shortTitle } from "@/lib/format";
@@ -75,6 +76,7 @@ type PlayerContextValue = {
   resumeLast: () => void;
   notify: (message: string) => void;
   toastMessage: { id: number; text: string } | null;
+  playerMountRef: RefObject<HTMLDivElement | null>;
 };
 
 const PlayerContext = createContext<PlayerContextValue | null>(null);
@@ -142,6 +144,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [favourites, setFavourites] = useState<Song[]>([]);
   const [resumeTarget, setResumeTarget] = useState<{ song: Song; position: number } | null>(null);
   const [toastMessage, setToastMessage] = useState<{ id: number; text: string } | null>(null);
+  const playerMountRef = useRef<HTMLDivElement>(null);
 
   /* Mirrors for use inside stable callbacks / player events. */
   const queueRef = useRef<Song[]>([]);
@@ -180,19 +183,6 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   /* True as soon as the user deliberately loads any track. */
   const userLoadedRef = useRef(false);
   const advanceRef = useRef<(auto: boolean) => void>(() => {});
-  const previousRef = useRef<() => void>(() => {});
-  /* Stable handle to the live player for lock-screen handlers. */
-  const playerRef = useRef<{
-    play: () => void;
-    pause: () => void;
-    seek: (seconds: number) => void;
-    getCurrentTime: () => number;
-  }>({
-    play: () => {},
-    pause: () => {},
-    seek: () => {},
-    getCurrentTime: () => 0,
-  });
   const loadRef = useRef<(song: Song, autoplay: boolean, startAt?: number) => void>(() => {});
 
   const player = useYouTubePlayer(
@@ -231,7 +221,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         setError("Music service is temporarily unavailable. Please try again.");
       },
     },
-    DEFAULT_PREFS.volume
+    DEFAULT_PREFS.volume,
+    playerMountRef,
+    Boolean(current)
   );
 
   /* --------------------------- Restore on mount -------------------------- */
@@ -292,72 +284,34 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   /* ------------------------------ Progress ------------------------------- */
 
   /**
-   * Progress loop. The YouTube player is the only source of truth for time —
-   * we never run an independent timer.
-   *
-   * rAF is throttled (often stopped entirely) in a hidden tab, which would
-   * freeze the UI clock while audio kept playing in the background. So we use
-   * rAF while visible for smoothness, and fall back to a plain interval when
-   * the page is hidden, swapping automatically on visibilitychange.
+   * The official YouTube video remains visible while it plays. Pause it when
+   * the document is backgrounded; do not provide background-only playback.
    */
   useEffect(() => {
     if (!isPlaying) return;
-
-    let raf = 0;
-    let interval = 0;
-    let last = 0;
-
-    const sample = () => {
-      if (!seekingRef.current) {
-        const t = player.getCurrentTime();
-        if (Number.isFinite(t)) setCurrentTime(t);
-      }
-      const d = player.getDuration();
-      if (Number.isFinite(d) && d > 0) {
-        setDuration((prev) => (Math.abs(prev - d) > 0.5 ? d : prev));
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        player.pause();
+        setStatus("paused");
       }
     };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, [isPlaying, player]);
 
-    const tick = (ts: number) => {
-      if (ts - last >= 250) {
-        last = ts;
-        sample();
+  /* Poll the visible iframe for its real playback position. */
+  useEffect(() => {
+    if (!isPlaying) return;
+    const id = window.setInterval(() => {
+      if (seekingRef.current) return;
+      const time = player.getCurrentTime();
+      if (Number.isFinite(time)) setCurrentTime(time);
+      const total = player.getDuration();
+      if (Number.isFinite(total) && total > 0) {
+        setDuration((previous) => (Math.abs(previous - total) > 0.5 ? total : previous));
       }
-      raf = window.requestAnimationFrame(tick);
-    };
-
-    const startForeground = () => {
-      window.clearInterval(interval);
-      interval = 0;
-      cancelAnimationFrame(raf);
-      raf = window.requestAnimationFrame(tick);
-    };
-
-    const startBackground = () => {
-      cancelAnimationFrame(raf);
-      raf = 0;
-      window.clearInterval(interval);
-      // 1s is plenty while hidden and survives background throttling.
-      interval = window.setInterval(sample, 1000);
-    };
-
-    const onVisibility = () => {
-      if (document.visibilityState === "hidden") startBackground();
-      else {
-        startForeground();
-        sample(); // resync immediately on return
-      }
-    };
-
-    if (document.visibilityState === "hidden") startBackground();
-    else startForeground();
-
-    document.addEventListener("visibilitychange", onVisibility);
-    return () => {
-      document.removeEventListener("visibilitychange", onVisibility);
-      cancelAnimationFrame(raf);
-      window.clearInterval(interval);
-    };
+    }, 350);
+    return () => window.clearInterval(id);
   }, [isPlaying, player]);
 
   /* Persist a resume point (throttled). */
@@ -368,91 +322,6 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     }, 2000);
     return () => window.clearTimeout(id);
   }, [current, currentTime]);
-
-  /* Lock-screen / headset controls on Android. */
-  useEffect(() => {
-    if (typeof navigator === "undefined" || !("mediaSession" in navigator) || !current) return;
-    try {
-      navigator.mediaSession.metadata = new MediaMetadata({
-        title: current.title,
-        artist: current.artist,
-        album: current.category,
-        artwork: [
-          { src: current.thumbnail, sizes: "480x360", type: "image/jpeg" },
-          {
-            src: `https://i.ytimg.com/vi/${current.youtubeId}/maxresdefault.jpg`,
-            sizes: "1280x720",
-            type: "image/jpeg",
-          },
-        ],
-      });
-      navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
-    } catch {
-      /* unsupported browser */
-    }
-  }, [current, isPlaying]);
-
-  /* Lock-screen / notification / headset buttons.
-     Registered once and driven through refs, so the handlers stay valid while
-     the screen is off and never need re-binding on every render. */
-  useEffect(() => {
-    if (typeof navigator === "undefined" || !("mediaSession" in navigator)) return;
-    const ms = navigator.mediaSession;
-    const set = (action: MediaSessionAction, handler: (() => void) | null) => {
-      try {
-        ms.setActionHandler(action, handler);
-      } catch {
-        /* action unsupported on this browser — ignore it */
-      }
-    };
-
-    set("play", () => playerRef.current?.play());
-    set("pause", () => playerRef.current?.pause());
-    set("previoustrack", () => previousRef.current());
-    set("nexttrack", () => advanceRef.current(false));
-    set("seekbackward", () => {
-      const t = Math.max(0, playerRef.current?.getCurrentTime() - 10);
-      playerRef.current?.seek(t);
-    });
-    set("seekforward", () => {
-      const t = playerRef.current?.getCurrentTime() + 10;
-      playerRef.current?.seek(t);
-    });
-    set("seekto", (details?: MediaSessionActionDetails) => {
-      if (typeof details?.seekTime === "number") playerRef.current?.seek(details.seekTime);
-    });
-    set("stop", () => playerRef.current?.pause());
-
-    return () => {
-      for (const a of [
-        "play",
-        "pause",
-        "previoustrack",
-        "nexttrack",
-        "seekbackward",
-        "seekforward",
-        "seekto",
-        "stop",
-      ] as MediaSessionAction[]) {
-        set(a, null);
-      }
-    };
-  }, []);
-
-  /* Keep the lock-screen scrubber in sync with real playback position. */
-  useEffect(() => {
-    if (typeof navigator === "undefined" || !("mediaSession" in navigator)) return;
-    if (!duration || !Number.isFinite(duration)) return;
-    try {
-      navigator.mediaSession.setPositionState?.({
-        duration,
-        position: Math.min(currentTime, duration),
-        playbackRate: 1,
-      });
-    } catch {
-      /* Safari throws if position > duration mid-seek — harmless */
-    }
-  }, [currentTime, duration]);
 
   /* ------------------------------ Transport ------------------------------ */
 
@@ -526,22 +395,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     advanceRef.current = advance;
   }, [advance]);
 
-  useEffect(() => {
-    playerRef.current = {
-      play: () => player.play(),
-      pause: () => player.pause(),
-      seek: (t: number) => {
-        seekingRef.current = true;
-        setCurrentTime(t);
-        player.seekTo(t);
-        window.setTimeout(() => {
-          seekingRef.current = false;
-        }, 350);
-      },
-      getCurrentTime: () => player.getCurrentTime(),
-    };
-    previousRef.current = previous;
-  });
+
 
   const playQueue = useCallback(
     (songs: Song[], startIndex = 0) => {
@@ -914,6 +768,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       resumeLast,
       notify,
       toastMessage,
+      playerMountRef,
     }),
     [
       current,
@@ -953,6 +808,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       resumeLast,
       notify,
       toastMessage,
+      playerMountRef,
     ]
   );
 
